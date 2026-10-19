@@ -1,4 +1,4 @@
-import type { Table } from 'apache-arrow'
+import type { Table, Vector } from 'apache-arrow'
 import { formatterFor, sortKeyFor, type CellFormatter, type SortKey } from './cellFormat'
 
 export interface ResultColumn {
@@ -10,8 +10,10 @@ export interface ResultColumn {
 }
 
 export interface QueryResult {
+  id: string
   sql: string
   table: Table
+  vectors: Vector[]
   columns: ResultColumn[]
   rowCount: number
   elapsedMs: number
@@ -27,11 +29,12 @@ export function describeResult(sql: string, table: Table, elapsedMs: number): Qu
     sortKey: sortKeyFor(field),
     numeric: numericTypeIds.has(field.typeId),
   }))
-  return { sql, table, columns, rowCount: table.numRows, elapsedMs }
+  const vectors = table.schema.fields.map((_, index) => table.getChildAt(index)!)
+  return { id: crypto.randomUUID(), sql, table, vectors, columns, rowCount: table.numRows, elapsedMs }
 }
 
 export function cellValue(result: QueryResult, rowIndex: number, columnIndex: number): unknown {
-  return result.table.getChildAt(columnIndex)?.get(rowIndex)
+  return result.vectors[columnIndex]?.get(rowIndex)
 }
 
 export function cellText(result: QueryResult, rowIndex: number, columnIndex: number): string | null {

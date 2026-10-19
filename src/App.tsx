@@ -2,7 +2,10 @@ import { useCallback, useRef, useState } from 'react'
 import { dropTable, renameTable } from './catalog/catalog'
 import { SqlEditor, type SqlEditorHandle } from './editor/SqlEditor'
 import { useEngineState } from './engine/engineContext'
+import { quoteIdentifier } from './engine/sqlText'
 import { useMessages } from './i18n/i18nContext'
+import type { DelimitedOptions } from './loaders/csvLoader'
+import { DelimitedOptionsForm } from './workspace/DelimitedOptionsForm'
 import { DropZone } from './workspace/DropZone'
 import { ImportProgressBar } from './workspace/ImportProgressBar'
 import { OpenFilesButton } from './workspace/OpenFilesButton'
@@ -33,15 +36,20 @@ export function App() {
   }, [refresh])
   const { state: runState, run } = useQueryRunner(engine, store, afterRun)
   const { openFiles, busyFile, scriptProgress, outcomes, clearOutcomes } = useFileOpener(engine, refresh)
+  const [delimitedOptions, setDelimitedOptions] = useState<DelimitedOptions>({})
+  const openWithOptions = (files: File[]) => void openFiles(files, { delimited: delimitedOptions })
   const runCurrent = useCallback(() => void run(editorRef.current?.runnableText() ?? ''), [run])
 
   return (
-    <DropZone onFiles={(files) => void openFiles(files)} hint={text.dropHint}>
+    <DropZone onFiles={openWithOptions} hint={text.dropHint}>
       <div className="app">
         <header className="app-header">
           <h1>sqlpane</h1>
           <p className="tagline">{text.appTagline}</p>
-          <OpenFilesButton label={text.openFiles} onFiles={(files) => void openFiles(files)} disabled={!engine} />
+          <div className="header-actions">
+            <DelimitedOptionsForm options={delimitedOptions} onChange={setDelimitedOptions} />
+            <OpenFilesButton label={text.openFiles} onFiles={openWithOptions} disabled={!engine} />
+          </div>
         </header>
         {engineState.status !== 'ready' && (
           <p className={engineState.status === 'failed' ? 'error banner' : 'muted banner'} data-testid="engine-status">
@@ -64,6 +72,7 @@ export function App() {
                 await dropTable(engine, name)
                 await refresh()
               }}
+              onPreview={(name) => void run(`SELECT * FROM ${quoteIdentifier(name)} LIMIT 100`)}
             />
             <QueryLibrary store={store} revision={libraryRevision} onPick={(sql) => editorRef.current?.setText(sql)} />
           </aside>

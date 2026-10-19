@@ -10,6 +10,6 @@ test('runs a query with the self-hosted engine and no foreign requests', async (
   await openApp(page)
   await page.getByRole('button', { name: /^(Run|執行)$/ }).click()
   await expect(page.getByTestId('result-summary')).toContainText('1')
-  await expect(page.getByRole('table', { name: /Results|查詢結果/ })).toContainText('42')
+  await expect(page.getByRole('grid', { name: /Results|查詢結果/ })).toContainText('42')
   expect(foreignRequests).toEqual([])
 })

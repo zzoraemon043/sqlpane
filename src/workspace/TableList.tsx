@@ -6,18 +6,18 @@ interface TableListProps {
   tables: TableSummary[]
   onRename: (from: string, to: string) => Promise<void>
   onDrop: (name: string) => Promise<void>
-  onSelect?: (name: string) => void
+  onPreview: (name: string) => void
 }
 
-export function TableList({ tables, onRename, onDrop, onSelect }: TableListProps) {
+export function TableList({ tables, onRename, onDrop, onPreview }: TableListProps) {
   const text = useMessages()
   const [editing, setEditing] = useState<string>()
   if (tables.length === 0) return <p className="muted">{text.noTables}</p>
   return (
-    <ul className="table-list">
-      {tables.map((table) =>
-        editing === table.name ? (
-          <li key={table.name}>
+    <ul className="table-list" aria-label={text.tables}>
+      {tables.map((table) => (
+        <li key={table.name}>
+          {editing === table.name ? (
             <RenameForm
               initial={table.name}
               onCancel={() => setEditing(undefined)}
@@ -26,23 +26,38 @@ export function TableList({ tables, onRename, onDrop, onSelect }: TableListProps
                 setEditing(undefined)
               }}
             />
-          </li>
-        ) : (
-          <li key={table.name} className="table-list-item">
-            <button type="button" className="link" onClick={() => onSelect?.(table.name)}>
-              {table.name}
-            </button>
-            <span className="table-actions">
-              <button type="button" className="small" onClick={() => setEditing(table.name)} aria-label={`${text.rename} ${table.name}`}>
-                {text.rename}
-              </button>
-              <button type="button" className="small" onClick={() => onDrop(table.name)} aria-label={`${text.drop} ${table.name}`}>
-                {text.drop}
-              </button>
-            </span>
-          </li>
-        ),
-      )}
+          ) : (
+            <details className="table-entry">
+              <summary>
+                <span className="table-name">{table.name}</span>
+                <span className="muted"> {table.columns.length}</span>
+              </summary>
+              <div className="table-actions">
+                <button type="button" className="small" onClick={() => onPreview(table.name)} aria-label={`${text.preview} ${table.name}`}>
+                  {text.preview}
+                </button>
+                <button type="button" className="small" onClick={() => setEditing(table.name)} aria-label={`${text.rename} ${table.name}`}>
+                  {text.rename}
+                </button>
+                <button type="button" className="small" onClick={() => onDrop(table.name)} aria-label={`${text.drop} ${table.name}`}>
+                  {text.drop}
+                </button>
+              </div>
+              <ul className="column-list" aria-label={`${text.columns} ${table.name}`}>
+                {table.columns.map((column) => (
+                  <li key={column.name}>
+                    <span className="column-name">{column.name}</span>
+                    <span className="column-type">
+                      {column.type}
+                      {column.nullable ? '' : ' NOT NULL'}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
+        </li>
+      ))}
     </ul>
   )
 }

@@ -1,5 +1,5 @@
 import { useMessages } from '../i18n/i18nContext'
-import { SimpleResultTable } from '../results/SimpleResultTable'
+import { ResultGrid } from '../results/ResultGrid'
 import type { RunState } from './useQueryRunner'
 
 export function ResultPanel({ state }: { state: RunState }) {
@@ -17,10 +17,7 @@ export function ResultPanel({ state }: { state: RunState }) {
   const { result } = state
   return (
     <div className="result-panel">
-      <p className="result-summary" data-testid="result-summary">
-        {result.rowCount.toLocaleString()} {text.rowCount} · {result.elapsedMs.toFixed(1)} {text.elapsed}
-      </p>
-      <SimpleResultTable result={result} />
+      <ResultGrid key={result.id} result={result} />
     </div>
   )
 }
