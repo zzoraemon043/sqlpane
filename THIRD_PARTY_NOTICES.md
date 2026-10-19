@@ -6,5 +6,7 @@ sqlpane is released under the MIT License. It redistributes the packages below i
 | --- | --- | --- |
 | react | MIT | User interface |
 | react-dom | MIT | User interface |
+| @duckdb/duckdb-wasm | MIT | SQL engine, WebAssembly bundles and workers served by the site |
+| apache-arrow | Apache-2.0 | Columnar data exchange with the SQL engine |
 
 Development-only tools such as TypeScript, Vite, Vitest, Playwright and ESLint are not redistributed in the built site.
