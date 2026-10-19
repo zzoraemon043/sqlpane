@@ -71,6 +71,19 @@ export const en = {
   yes: 'Yes',
   no: 'No',
   csvOptionsHint: 'Applies to CSV and TSV files opened after the change.',
+  viewTable: 'Table',
+  viewChart: 'Chart',
+  resultView: 'Result view',
+  chartType: 'Chart type',
+  chartKinds: { bar: 'Bar chart', line: 'Line chart', scatter: 'Scatter chart', pie: 'Pie chart' },
+  chartCategory: 'Category',
+  chartXAxis: 'X axis',
+  chartValue: 'Value',
+  chartNeedsNumbers: 'Charts need at least one numeric column.',
+  chartOther: 'Other',
+  exportResult: 'Export',
+  exportTruncated: 'Excel holds at most 1,048,575 data rows; the rest were left out.',
+  exportFailed: 'Export failed',
 }
 
 export type Messages = typeof en

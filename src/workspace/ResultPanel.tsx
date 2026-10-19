@@ -1,5 +1,9 @@
+import { useState } from 'react'
+import { ChartPanel } from '../charts/ChartPanel'
 import { useMessages } from '../i18n/i18nContext'
+import type { QueryResult } from '../results/queryResult'
 import { ResultGrid } from '../results/ResultGrid'
+import { ExportButtons } from './ExportButtons'
 import type { RunState } from './useQueryRunner'
 
 export function ResultPanel({ state }: { state: RunState }) {
@@ -14,10 +18,30 @@ export function ResultPanel({ state }: { state: RunState }) {
       </div>
     )
   }
-  const { result } = state
+  return <ResultTabs key={state.result.id} result={state.result} />
+}
+
+function ResultTabs({ result }: { result: QueryResult }) {
+  const text = useMessages()
+  const [view, setView] = useState<'table' | 'chart'>('table')
+  const [rows, setRows] = useState<Int32Array>(() => Int32Array.from({ length: result.rowCount }, (_, index) => index))
   return (
     <div className="result-panel">
-      <ResultGrid key={result.id} result={result} />
+      <div className="result-toolbar">
+        <div role="tablist" aria-label={text.resultView} className="tabs">
+          <button type="button" role="tab" aria-selected={view === 'table'} onClick={() => setView('table')}>
+            {text.viewTable}
+          </button>
+          <button type="button" role="tab" aria-selected={view === 'chart'} onClick={() => setView('chart')}>
+            {text.viewChart}
+          </button>
+        </div>
+        <ExportButtons result={result} rows={rows} />
+      </div>
+      <div hidden={view !== 'table'} className="result-view">
+        <ResultGrid result={result} onViewChange={setRows} />
+      </div>
+      {view === 'chart' && <ChartPanel result={result} rows={rows} />}
     </div>
   )
 }
