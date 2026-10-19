@@ -22,3 +22,15 @@ export async function dropFile(page: Page, name: string, content: string, mimeTy
   await page.getByTestId('drop-zone').dispatchEvent('dragover', { dataTransfer })
   await page.getByTestId('drop-zone').dispatchEvent('drop', { dataTransfer })
 }
+
+export async function replaceEditorText(page: Page, sql: string): Promise<void> {
+  const editor = page.getByRole('textbox', { name: /SQL editor|SQL 編輯器/ })
+  await editor.click()
+  await page.keyboard.press('ControlOrMeta+a')
+  await page.keyboard.press('Delete')
+  await page.keyboard.insertText(sql)
+}
+
+export async function runEditor(page: Page): Promise<void> {
+  await page.keyboard.press('ControlOrMeta+Enter')
+}

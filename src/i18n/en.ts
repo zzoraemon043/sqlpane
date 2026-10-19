@@ -36,6 +36,23 @@ export const en = {
   statement: 'Statement',
   showingFirst: 'Showing the first',
   noProblems: 'Every row was imported.',
+  editorLabel: 'SQL editor',
+  editorPlaceholder: 'Write SQL here. Ctrl+Enter or Cmd+Enter runs the statement under the cursor or the selection.',
+  run: 'Run',
+  running: 'Running...',
+  format: 'Format',
+  saveQuery: 'Save query',
+  queryName: 'Query name',
+  savedQueries: 'Saved queries',
+  noSavedQueries: 'No saved queries.',
+  history: 'History',
+  noHistory: 'No queries run yet.',
+  clearHistory: 'Clear history',
+  results: 'Results',
+  queryFailed: 'Query failed',
+  storageUnavailable: 'Browser storage is unavailable. History and saved queries last only until the page is closed.',
+  rowCount: 'rows',
+  elapsed: 'ms',
 }
 
 export type Messages = typeof en
