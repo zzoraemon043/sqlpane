@@ -23,6 +23,7 @@
     "playwright.config.ts",
     "e2e",
     "scripts",
-    "build"
+    "build",
+    "playwright.screenshots.config.ts"
   ]
 }
