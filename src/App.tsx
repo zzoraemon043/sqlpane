@@ -4,6 +4,7 @@ import { SqlEditor, type SqlEditorHandle } from './editor/SqlEditor'
 import { useEngineState } from './engine/engineContext'
 import { quoteIdentifier } from './engine/sqlText'
 import { useMessages } from './i18n/i18nContext'
+import { LanguageSwitch } from './i18n/LanguageSwitch'
 import type { DelimitedOptions } from './loaders/csvLoader'
 import { DelimitedOptionsForm } from './workspace/DelimitedOptionsForm'
 import { DropZone } from './workspace/DropZone'
@@ -47,6 +48,7 @@ export function App() {
           <h1>sqlpane</h1>
           <p className="tagline">{text.appTagline}</p>
           <div className="header-actions">
+            <LanguageSwitch />
             <DelimitedOptionsForm options={delimitedOptions} onChange={setDelimitedOptions} />
             <OpenFilesButton label={text.openFiles} onFiles={openWithOptions} disabled={!engine} />
           </div>

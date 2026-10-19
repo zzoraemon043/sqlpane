@@ -43,7 +43,7 @@ export function TableList({ tables, onRename, onDrop, onPreview }: TableListProp
                   {text.drop}
                 </button>
               </div>
-              <ul className="column-list" aria-label={`${text.columns} ${table.name}`}>
+              <ul className="column-list" aria-label={text.columnsOf(table.name)}>
                 {table.columns.map((column) => (
                   <li key={column.name}>
                     <span className="column-name">{column.name}</span>

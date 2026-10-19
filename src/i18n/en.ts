@@ -1,4 +1,5 @@
 export const en = {
+  language: 'Language',
   appTagline: 'Drop in a file. Query it with SQL. Nothing leaves your browser.',
   engineStarting: 'Starting the SQL engine...',
   engineFailed: 'The SQL engine could not start.',
@@ -54,7 +55,7 @@ export const en = {
   rowCount: 'rows',
   elapsed: 'ms',
   preview: 'Preview',
-  columns: 'Columns of',
+  columnsOf: (table: string) => `Columns of ${table}`,
   shownAfterFilter: 'shown after filtering',
   filter: 'Filter',
   filterColumn: 'Filter',
