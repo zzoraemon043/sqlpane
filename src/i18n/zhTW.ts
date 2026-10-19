@@ -87,4 +87,7 @@ export const zhTW: Messages = {
   exportResult: '匯出',
   exportTruncated: 'Excel 最多只能放 1,048,575 列資料，其餘資料未匯出。',
   exportFailed: '匯出失敗',
+  offlinePreparing: '正在準備離線使用...',
+  offlineReady: '已可離線使用',
+  offlineFailed: '無法離線使用',
 }

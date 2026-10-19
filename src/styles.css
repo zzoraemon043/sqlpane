@@ -710,3 +710,17 @@ td.null {
 .slice-7 { fill: #5c940d; }
 .slice-8 { fill: #7048e8; }
 .slice-9 { fill: #868e96; }
+
+.offline-badge {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.offline-badge.ready {
+  color: var(--accent);
+}
+
+.offline-badge.failed {
+  color: var(--warning);
+}

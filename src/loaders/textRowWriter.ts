@@ -1,4 +1,5 @@
-import { Int32, Table, Utf8, tableToIPC, vectorFromArray, type Vector } from 'apache-arrow'
+import { Table, tableToIPC, type Vector } from 'apache-arrow'
+import { int32Vector, utf8Vector } from './arrowVectors'
 import type { SqlEngine } from '../engine/sqlEngine'
 import { quoteIdentifier } from '../engine/sqlText'
 
@@ -70,13 +71,10 @@ export async function appendTextRows(
 
 async function stageRows(engine: SqlEngine, columnCount: number, rows: (string | null)[][], lineNumbers: number[]) {
   const vectors: Record<string, Vector> = {
-    line: vectorFromArray(lineNumbers, new Int32()),
+    line: int32Vector(lineNumbers),
   }
   for (let columnIndex = 0; columnIndex < columnCount; columnIndex++) {
-    vectors[`c${columnIndex}`] = vectorFromArray(
-      rows.map((row) => row[columnIndex] ?? null),
-      new Utf8(),
-    )
+    vectors[`c${columnIndex}`] = utf8Vector(rows.map((row) => row[columnIndex] ?? null))
   }
   await engine.run(`DROP TABLE IF EXISTS ${stagingTableName}`)
   await engine.insertArrowIpc(stagingTableName, tableToIPC(new Table(vectors), 'stream'))

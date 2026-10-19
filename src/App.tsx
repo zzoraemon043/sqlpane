@@ -5,6 +5,7 @@ import { useEngineState } from './engine/engineContext'
 import { quoteIdentifier } from './engine/sqlText'
 import { useMessages } from './i18n/i18nContext'
 import { LanguageSwitch } from './i18n/LanguageSwitch'
+import { OfflineBadge } from './pwa/OfflineBadge'
 import type { DelimitedOptions } from './loaders/csvLoader'
 import { DelimitedOptionsForm } from './workspace/DelimitedOptionsForm'
 import { DropZone } from './workspace/DropZone'
@@ -48,6 +49,7 @@ export function App() {
           <h1>sqlpane</h1>
           <p className="tagline">{text.appTagline}</p>
           <div className="header-actions">
+            <OfflineBadge />
             <LanguageSwitch />
             <DelimitedOptionsForm options={delimitedOptions} onChange={setDelimitedOptions} />
             <OpenFilesButton label={text.openFiles} onFiles={openWithOptions} disabled={!engine} />

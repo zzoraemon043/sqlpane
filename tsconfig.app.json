@@ -29,6 +29,7 @@
   "exclude": [
     "src/**/*.test.ts",
     "src/**/*.test.tsx",
-    "src/test-support"
+    "src/test-support",
+    "src/serviceWorker/serviceWorker.ts"
   ]
 }

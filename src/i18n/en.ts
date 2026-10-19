@@ -85,6 +85,9 @@ export const en = {
   exportResult: 'Export',
   exportTruncated: 'Excel holds at most 1,048,575 data rows; the rest were left out.',
   exportFailed: 'Export failed',
+  offlinePreparing: 'Preparing offline use...',
+  offlineReady: 'Ready for offline use',
+  offlineFailed: 'Offline use is not available',
 }
 
 export type Messages = typeof en
