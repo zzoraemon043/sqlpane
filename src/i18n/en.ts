@@ -20,6 +20,22 @@ export const en = {
   unsupportedUnknown: 'This file type is not supported.',
   loadFailed: 'Could not open',
   dismiss: 'Dismiss',
+  importReport: 'Import report',
+  importProgress: 'Import progress',
+  statementsRead: 'statements',
+  rowsImported: 'rows imported',
+  dialectMysql: 'MySQL script',
+  dialectSqlserver: 'SQL Server script',
+  skippedStatements: 'Skipped statements',
+  failedRows: 'Rows not imported',
+  failedStatements: 'Statements not imported',
+  line: 'Line',
+  table: 'Table',
+  reason: 'Reason',
+  kind: 'Kind',
+  statement: 'Statement',
+  showingFirst: 'Showing the first',
+  noProblems: 'Every row was imported.',
 }
 
 export type Messages = typeof en

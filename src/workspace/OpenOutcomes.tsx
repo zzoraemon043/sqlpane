@@ -1,4 +1,5 @@
 import { useMessages } from '../i18n/i18nContext'
+import { ImportReportView } from './ImportReportView'
 import type { OpenOutcome } from './useFileOpener'
 
 export function OpenOutcomes({ outcomes, onDismiss }: { outcomes: OpenOutcome[]; onDismiss: () => void }) {
@@ -33,6 +34,7 @@ function OutcomeLine({ outcome }: { outcome: OpenOutcome }) {
             {warning}
           </span>
         ))}
+        {outcome.result.importReport && <ImportReportView fileName={outcome.fileName} report={outcome.result.importReport} />}
       </>
     )
   }

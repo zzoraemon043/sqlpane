@@ -9,6 +9,9 @@ import { loadJsonText } from './jsonLoader'
 import type { LoadResult } from './loadResult'
 import { loadParquetBuffer } from './parquetLoader'
 import { loadSqliteDatabase } from './sqliteLoader'
+import type { ImportProgress } from '../importer/importReport'
+import { importScript } from '../importer/importScript'
+import { readTextChunks } from '../importer/scriptChunks'
 
 export interface OpenFileDependencies {
   engine: SqlEngine
@@ -17,12 +20,13 @@ export interface OpenFileDependencies {
 
 export interface OpenFileOptions {
   delimited?: DelimitedOptions
+  onScriptProgress?: (progress: ImportProgress) => void
 }
 
 export class UnsupportedFileError extends Error {
-  readonly reason: 'backup' | 'unknown' | 'script'
+  readonly reason: 'backup' | 'unknown'
 
-  constructor(reason: 'backup' | 'unknown' | 'script', fileName: string) {
+  constructor(reason: 'backup' | 'unknown', fileName: string) {
     super(`${reason}: ${fileName}`)
     this.reason = reason
   }
@@ -54,6 +58,7 @@ export async function openFile(
     case 'sqlite':
       return openSqlite(dependencies, file, existing)
     case 'script':
+      return openScript(engine, file, existing, options)
     case 'backup':
     case 'unknown':
       throw new UnsupportedFileError(kind, file.name)
@@ -64,4 +69,18 @@ async function openSqlite(dependencies: OpenFileDependencies, file: File, existi
   const bytes = new Uint8Array(await file.arrayBuffer())
   if (!hasSqliteHeader(bytes)) throw new Error(`not a SQLite database: ${file.name}`)
   return loadSqliteDatabase(dependencies.engine, await dependencies.loadSqlJs(), bytes, existing)
+}
+
+async function openScript(engine: SqlEngine, file: File, existing: string[], options: OpenFileOptions): Promise<LoadResult> {
+  const report = await importScript(engine, readTextChunks(file), {
+    totalBytes: file.size,
+    existingTableNames: existing,
+    onProgress: options.onScriptProgress,
+    yieldToUi: () => new Promise((resolve) => setTimeout(resolve, 0)),
+  })
+  return {
+    tables: report.tables.map((table) => ({ name: table.name, rowCount: table.rowCount })),
+    warnings: report.warnings,
+    importReport: report,
+  }
 }

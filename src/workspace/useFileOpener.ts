@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react'
+import type { ImportProgress } from '../importer/importReport'
 import type { SqlEngine } from '../engine/sqlEngine'
 import type { LoadResult } from '../loaders/loadResult'
 import { openFile, UnsupportedFileError, type OpenFileOptions } from '../loaders/openFile'
@@ -14,6 +15,7 @@ export type FileHandler = (file: File) => Promise<LoadResult> | undefined
 export function useFileOpener(engine: SqlEngine | undefined, onTablesChanged: () => Promise<void>, specialHandler?: FileHandler) {
   const [busyFile, setBusyFile] = useState<string>()
   const [outcomes, setOutcomes] = useState<OpenOutcome[]>([])
+  const [scriptProgress, setScriptProgress] = useState<ImportProgress>()
 
   const openFiles = useCallback(
     async (files: readonly File[], options: OpenFileOptions = {}) => {
@@ -21,7 +23,8 @@ export function useFileOpener(engine: SqlEngine | undefined, onTablesChanged: ()
       const collected: OpenOutcome[] = []
       for (const file of files) {
         setBusyFile(file.name)
-        collected.push(await openOne(engine, file, options, specialHandler))
+        collected.push(await openOne(engine, file, { ...options, onScriptProgress: setScriptProgress }, specialHandler))
+        setScriptProgress(undefined)
         await onTablesChanged()
       }
       setBusyFile(undefined)
@@ -30,7 +33,7 @@ export function useFileOpener(engine: SqlEngine | undefined, onTablesChanged: ()
     [engine, onTablesChanged, specialHandler],
   )
 
-  return { openFiles, busyFile, outcomes, clearOutcomes: () => setOutcomes([]) }
+  return { openFiles, busyFile, scriptProgress, outcomes, clearOutcomes: () => setOutcomes([]) }
 }
 
 async function openOne(engine: SqlEngine, file: File, options: OpenFileOptions, specialHandler?: FileHandler): Promise<OpenOutcome> {

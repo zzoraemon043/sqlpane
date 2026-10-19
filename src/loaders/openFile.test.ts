@@ -42,3 +42,17 @@ describe('open file', () => {
     await expect(openFile(dependencies(), new File(['plain'], 'fake.db'))).rejects.toThrow('not a SQLite database')
   })
 })
+
+describe('open script file', () => {
+  it('imports a .sql script and returns the import report', async () => {
+    const steps: number[] = []
+    const result = await openFile(
+      dependencies(),
+      new File(['CREATE TABLE `kv` (`k` varchar(10), `v` int);\nINSERT INTO `kv` VALUES (\'a\',1),(\'b\',2);\nUNLOCK TABLES;\n'], 'dump.sql'),
+      { onScriptProgress: (progress) => steps.push(progress.bytesRead) },
+    )
+    expect(result.tables).toEqual([{ name: 'kv', rowCount: 2 }])
+    expect(result.importReport?.skippedByKind).toEqual({ 'UNLOCK TABLES': 1 })
+    expect(steps.length).toBeGreaterThan(0)
+  })
+})

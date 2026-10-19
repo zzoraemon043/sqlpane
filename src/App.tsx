@@ -3,6 +3,7 @@ import { dropTable, renameTable } from './catalog/catalog'
 import { useEngineState } from './engine/engineContext'
 import { useMessages } from './i18n/i18nContext'
 import { DropZone } from './workspace/DropZone'
+import { ImportProgressBar } from './workspace/ImportProgressBar'
 import { OpenFilesButton } from './workspace/OpenFilesButton'
 import { OpenOutcomes } from './workspace/OpenOutcomes'
 import { TableList } from './workspace/TableList'
@@ -14,7 +15,7 @@ export function App() {
   const engineState = useEngineState()
   const engine = engineState.status === 'ready' ? engineState.engine : undefined
   const { tables, refresh } = useCatalog(engine)
-  const { openFiles, busyFile, outcomes, clearOutcomes } = useFileOpener(engine, refresh)
+  const { openFiles, busyFile, scriptProgress, outcomes, clearOutcomes } = useFileOpener(engine, refresh)
   const [sql, setSql] = useState('SELECT 42 AS answer')
   const [output, setOutput] = useState('')
 
@@ -48,6 +49,7 @@ export function App() {
           {text.loading} {busyFile}
         </p>
       )}
+      {scriptProgress && <ImportProgressBar progress={scriptProgress} />}
       <OpenOutcomes outcomes={outcomes} onDismiss={clearOutcomes} />
       <aside>
         <h2>{text.tables}</h2>
