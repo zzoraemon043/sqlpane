@@ -2,10 +2,11 @@ import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import { contentSecurityPolicyPlugin } from './build/contentSecurityPolicy'
 import { serviceWorkerPlugin } from './build/serviceWorkerPlugin'
+import { thirdPartyLicensesPlugin } from './build/thirdPartyLicensesPlugin'
 
 export default defineConfig({
   base: process.env.BASE_PATH ?? '/',
-  plugins: [react(), contentSecurityPolicyPlugin(), serviceWorkerPlugin()],
+  plugins: [react(), contentSecurityPolicyPlugin(), thirdPartyLicensesPlugin(['@duckdb/duckdb-wasm', 'sql.js']), serviceWorkerPlugin()],
   test: {
     testTimeout: 30_000,
     hookTimeout: 60_000,
