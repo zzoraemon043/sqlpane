@@ -4,6 +4,8 @@
 
 sqlpane is an offline-first SQL workbench that runs entirely in the browser. Drag in CSV, JSON, Excel, Parquet or SQLite files, or a MySQL or SQL Server script export, and query them with SQL. It is built on DuckDB-WASM and works without a server or an account.
 
+**線上試用 / Try it online: <https://zzoraemon043.github.io/sqlpane/>**
+
 [繁體中文](#繁體中文) | [English](#english)
 
 > Status: early development. The design is in [docs/spec.md](docs/spec.md).

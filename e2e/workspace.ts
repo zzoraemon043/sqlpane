@@ -1,7 +1,7 @@
 import { expect, type Page } from '@playwright/test'
 
 export async function openApp(page: Page): Promise<void> {
-  await page.goto('/')
+  await page.goto('./')
   await expect(page.getByTestId('file-input')).toBeAttached()
   await expect(page.getByRole('button', { name: /Open files|開啟檔案/ })).toBeEnabled({ timeout: 30_000 })
 }

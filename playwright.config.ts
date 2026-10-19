@@ -1,6 +1,7 @@
 import { defineConfig, devices } from '@playwright/test'
 
 const port = 4173
+const basePath = process.env.BASE_PATH ?? '/'
 
 export default defineConfig({
   testDir: 'e2e',
@@ -10,13 +11,13 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
   use: {
-    baseURL: `http://localhost:${port}`,
+    baseURL: `http://localhost:${port}${basePath}`,
     trace: 'retain-on-failure',
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
     command: `npm run preview -- --port ${port} --strictPort`,
-    url: `http://localhost:${port}`,
+    url: `http://localhost:${port}${basePath}`,
     reuseExistingServer: !process.env.CI,
   },
 })
