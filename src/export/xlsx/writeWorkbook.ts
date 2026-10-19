@@ -16,13 +16,19 @@ const styles =
 const dateStyle = 1
 const headerStyle = 2
 
+function isAllowedXmlCodePoint(codePoint: number): boolean {
+  if (codePoint === 0x9 || codePoint === 0xa || codePoint === 0xd) return true
+  if (codePoint >= 0x20 && codePoint <= 0xd7ff) return true
+  if (codePoint >= 0xe000 && codePoint <= 0xfffd) return true
+  return codePoint >= 0x10000 && codePoint <= 0x10ffff
+}
+
 export function escapeXml(text: string): string {
-  return text
-    .replace(/[^\u0009\u000A\u000D -퟿-�\u{10000}-\u{10FFFF}]/gu, '')
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
+  let cleaned = ''
+  for (const character of text) {
+    if (isAllowedXmlCodePoint(character.codePointAt(0)!)) cleaned += character
+  }
+  return cleaned.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;')
 }
 
 export function columnLetters(index: number): string {
