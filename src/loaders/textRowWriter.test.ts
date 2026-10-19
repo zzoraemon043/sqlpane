@@ -57,7 +57,8 @@ describe('text row writer', () => {
     })
     expect(outcome.inserted).toBe(2)
     expect(outcome.failedLines).toEqual([2, 3])
-    expect(outcome.failureMessages.length).toBeGreaterThan(0)
+    expect(outcome.failures.length).toBeGreaterThan(0)
+    expect(outcome.failures.every((failure) => failure.code === 'detail')).toBe(true)
     expect(await selectRows(engine(), 'SELECT id, v FROM keyed ORDER BY id')).toEqual([
       { id: 1, v: 'a' },
       { id: 2, v: 'b' },
@@ -66,6 +67,6 @@ describe('text row writer', () => {
 
   it('accepts an empty batch', async () => {
     const outcome = await appendTextRows(engine(), { name: 'unused', columns: [] }, { rows: [] })
-    expect(outcome).toEqual({ inserted: 0, failedLines: [], failureMessages: [] })
+    expect(outcome).toEqual({ inserted: 0, failedLines: [], failures: [] })
   })
 })

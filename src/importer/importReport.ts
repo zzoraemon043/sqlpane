@@ -1,4 +1,5 @@
 import type { Dialect } from './dialect'
+import { noticeKey, type Notice } from '../loaders/notice'
 
 export interface SkippedStatement {
   line: number
@@ -9,13 +10,13 @@ export interface SkippedStatement {
 export interface FailedRow {
   line: number
   table: string
-  reason: string
+  reason: Notice
 }
 
 export interface FailedStatement {
   line: number
   preview: string
-  reason: string
+  reason: Notice
 }
 
 export interface ImportedTable {
@@ -33,7 +34,7 @@ export interface ImportReport {
   failedRows: FailedRow[]
   failedRowTotal: number
   failedStatements: FailedStatement[]
-  warnings: string[]
+  warnings: Notice[]
   zeroDatesAsNull: number
 }
 
@@ -79,7 +80,7 @@ export class ImportReportBuilder {
     if (this.report.failedStatements.length < reportListLimit) this.report.failedStatements.push(entry)
   }
 
-  warn(message: string) {
-    if (!this.report.warnings.includes(message)) this.report.warnings.push(message)
+  warn(notice: Notice) {
+    if (!this.report.warnings.some((existing) => noticeKey(existing) === noticeKey(notice))) this.report.warnings.push(notice)
   }
 }

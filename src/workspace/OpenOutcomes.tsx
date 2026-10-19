@@ -1,4 +1,5 @@
 import { useMessages } from '../i18n/i18nContext'
+import { noticeKey } from '../loaders/notice'
 import { ImportReportView } from './ImportReportView'
 import type { OpenOutcome } from './useFileOpener'
 
@@ -29,9 +30,9 @@ function OutcomeLine({ outcome }: { outcome: OpenOutcome }) {
       <>
         {text.loadedTables} {outcome.fileName}: {tables.join(', ')}
         {outcome.result.warnings.map((warning) => (
-          <span key={warning} className="warning">
+          <span key={noticeKey(warning)} className="warning">
             {' '}
-            {warning}
+            {text.describeNotice(warning)}
           </span>
         ))}
         {outcome.result.importReport && <ImportReportView fileName={outcome.fileName} report={outcome.result.importReport} />}

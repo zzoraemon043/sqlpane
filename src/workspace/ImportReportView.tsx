@@ -38,7 +38,7 @@ function FailedRows({ report }: { report: ImportReport }) {
             <tr key={index}>
               <td>{row.line}</td>
               <td>{row.table}</td>
-              <td>{row.reason}</td>
+              <td>{text.describeNotice(row.reason)}</td>
             </tr>
           ))}
         </tbody>
@@ -70,7 +70,7 @@ function FailedStatements({ report }: { report: ImportReport }) {
               <td>
                 <code>{statement.preview}</code>
               </td>
-              <td>{statement.reason}</td>
+              <td>{text.describeNotice(statement.reason)}</td>
             </tr>
           ))}
         </tbody>

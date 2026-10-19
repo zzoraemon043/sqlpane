@@ -1,5 +1,6 @@
 import { Table, tableToIPC, type Vector } from 'apache-arrow'
 import { int32Vector, utf8Vector } from './arrowVectors'
+import { detail, uniqueNotices, type Notice } from './notice'
 import type { SqlEngine } from '../engine/sqlEngine'
 import { quoteIdentifier } from '../engine/sqlText'
 
@@ -23,7 +24,7 @@ export interface TextRowBatch {
 export interface AppendOutcome {
   inserted: number
   failedLines: number[]
-  failureMessages: string[]
+  failures: Notice[]
 }
 
 const stagingTableName = '__sqlpane_staging'
@@ -59,7 +60,7 @@ export async function appendTextRows(
   target: TargetTable,
   batch: TextRowBatch,
 ): Promise<AppendOutcome> {
-  if (batch.rows.length === 0) return { inserted: 0, failedLines: [], failureMessages: [] }
+  if (batch.rows.length === 0) return { inserted: 0, failedLines: [], failures: [] }
   const lineNumbers = batch.lineNumbers ?? batch.rows.map((_, index) => index + 1)
   await stageRows(engine, target.columns.length, batch.rows, lineNumbers)
   try {
@@ -87,14 +88,14 @@ async function insertStagedRows(engine: SqlEngine, target: TargetTable): Promise
   const selectList = stagedColumns.map(({ column, sql }) => conversionExpression(sql, column.type)).join(', ')
   const failedRows = await engine.run(`SELECT line FROM ${stagingTableName} WHERE NOT (${allConvertible}) ORDER BY line`)
   const failedLines = failedRows.toArray().map((row) => Number(row.line))
-  const failureMessages = failedLines.length > 0 ? ['value does not match the column type'] : []
+  const failures: Notice[] = failedLines.length > 0 ? [{ code: 'valueTypeMismatch' }] : []
   const insertSql = (filter: string) =>
     `INSERT INTO ${quoteIdentifier(target.name)} (${columnList}) SELECT ${selectList} FROM ${stagingTableName} WHERE ${filter}`
   try {
     const result = await engine.run(insertSql(`(${allConvertible})`))
-    return { inserted: Number(result.getChildAt(0)?.get(0) ?? 0), failedLines, failureMessages }
+    return { inserted: Number(result.getChildAt(0)?.get(0) ?? 0), failedLines, failures }
   } catch {
-    return insertRowByRow(engine, insertSql, allConvertible, failedLines, failureMessages)
+    return insertRowByRow(engine, insertSql, allConvertible, failedLines, failures)
   }
 }
 
@@ -103,12 +104,12 @@ async function insertRowByRow(
   insertSql: (filter: string) => string,
   allConvertible: string,
   failedLines: number[],
-  failureMessages: string[],
+  failures: Notice[],
 ): Promise<AppendOutcome> {
   const candidates = await engine.run(`SELECT line FROM ${stagingTableName} WHERE ${allConvertible} ORDER BY line`)
   let inserted = 0
   const lines = [...failedLines]
-  const messages = [...failureMessages]
+  const messages = [...failures]
   for (const row of candidates.toArray()) {
     const line = Number(row.line)
     try {
@@ -116,10 +117,10 @@ async function insertRowByRow(
       inserted++
     } catch (error) {
       lines.push(line)
-      messages.push(firstLine(error))
+      messages.push(detail(firstLine(error)))
     }
   }
-  return { inserted, failedLines: lines.sort((a, b) => a - b), failureMessages: [...new Set(messages)] }
+  return { inserted, failedLines: lines.sort((a, b) => a - b), failures: uniqueNotices(messages) }
 }
 
 function firstLine(error: unknown): string {

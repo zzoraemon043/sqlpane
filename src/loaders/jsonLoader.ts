@@ -18,6 +18,6 @@ export async function loadJsonText(
   const { failedLines } = await writeValueTable(engine, { name: tableName, columnNames, rows })
   return {
     tables: [{ name: tableName, rowCount: rows.length - failedLines.length }],
-    warnings: failedLines.length > 0 ? [`skipped records: ${failedLines.join(', ')}`] : [],
+    warnings: failedLines.length > 0 ? [{ code: 'recordsSkipped', lines: failedLines }] : [],
   }
 }

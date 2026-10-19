@@ -10,6 +10,7 @@ import type { TextChunk } from './scriptChunks'
 import { StatementSplitter, type SplitEvent } from './statementSplitter'
 import { tokenize, TokenizeError } from './tokenizer'
 import { valueToColumnText } from './valueText'
+import { detail, type Notice } from '../loaders/notice'
 
 export interface ImportOptions {
   dialect?: Dialect
@@ -84,7 +85,7 @@ class ScriptImporter {
   private finalReport(): ImportReport {
     const report = this.builder.report
     report.tables = [...this.tables.values()].map((table) => ({ name: table.target.name, sourceName: table.sourceName, rowCount: table.rowCount }))
-    if (report.zeroDatesAsNull > 0) this.builder.warn(`zero dates stored as NULL: ${report.zeroDatesAsNull}`)
+    if (report.zeroDatesAsNull > 0) this.builder.warn({ code: 'zeroDatesAsNull', count: report.zeroDatesAsNull })
     return report
   }
 
@@ -115,7 +116,7 @@ class ScriptImporter {
       tokens = tokenize(text, this.dialect)
     } catch (error) {
       const offset = error instanceof TokenizeError ? error.line : 0
-      this.builder.failStatement({ line: line + offset, preview: previewOf(text), reason: messageOf(error) })
+      this.builder.failStatement({ line: line + offset, preview: previewOf(text), reason: detail(messageOf(error)) })
       return
     }
     try {
@@ -123,7 +124,7 @@ class ScriptImporter {
       else if (isInsert(tokens)) await this.insert(parseInsert(tokens), line)
       else this.builder.skip({ line, kind: statementKind(tokens), preview: previewOf(text) })
     } catch (error) {
-      this.builder.failStatement({ line, preview: previewOf(text), reason: messageOf(error) })
+      this.builder.failStatement({ line, preview: previewOf(text), reason: detail(messageOf(error)) })
     }
   }
 
@@ -140,7 +141,7 @@ class ScriptImporter {
     this.takenNames.push(name)
     this.tables.set(key, { target, sourceName, rowCount: 0 })
     if (definition.skippedComputedColumns.length > 0) {
-      this.builder.warn(`${name}: computed columns not imported: ${definition.skippedComputedColumns.join(', ')}`)
+      this.builder.warn({ code: 'computedColumnsSkipped', table: name, columns: definition.skippedComputedColumns })
     }
   }
 
@@ -153,11 +154,11 @@ class ScriptImporter {
     for (const row of statement.rows) {
       const rowLine = line + row.line
       if ('error' in row) {
-        this.builder.failRow({ line: rowLine, table: table.target.name, reason: row.error })
+        this.builder.failRow({ line: rowLine, table: table.target.name, reason: detail(row.error) })
         continue
       }
       if (row.values.length !== target.columns.length) {
-        this.builder.failRow({ line: rowLine, table: table.target.name, reason: `expected ${target.columns.length} values, found ${row.values.length}` })
+        this.builder.failRow({ line: rowLine, table: table.target.name, reason: { code: 'valueCountMismatch', expected: target.columns.length, found: row.values.length } })
         continue
       }
       batch.rows.push(row.values.map((value, index) => this.columnText(value, target.columns[index].type)))
@@ -181,7 +182,7 @@ class ScriptImporter {
       { qualifiedName: [sourceName], columns: statement.columns.map((name) => ({ name, sourceType: { name: 'TEXT', args: [], unsigned: false }, type: 'VARCHAR', notNull: false })), primaryKey: [], skippedComputedColumns: [] },
       line,
     )
-    this.builder.warn(`${sourceName}: created with text columns because the script has no CREATE TABLE for it`)
+    this.builder.warn({ code: 'createdWithTextColumns', table: sourceName })
     return this.tables.get(sourceName.toLowerCase())!
   }
 
@@ -203,13 +204,19 @@ class ScriptImporter {
     const outcome = await appendTextRows(this.engine, batch.target, { rows: batch.rows, lineNumbers: batch.lines })
     batch.table.rowCount += outcome.inserted
     this.progress.rowsInserted += outcome.inserted
-    const reason = outcome.failureMessages.join('; ') || 'value does not match the column type'
+    const reason = combinedReason(outcome.failures)
     for (const failedLine of outcome.failedLines) this.builder.failRow({ line: failedLine, table: batch.target.name, reason })
   }
 
   private async flushAll() {
     for (const key of [...this.pending.keys()]) await this.flush(key)
   }
+}
+
+function combinedReason(failures: Notice[]): Notice {
+  if (failures.length === 0) return { code: 'valueTypeMismatch' }
+  if (failures.length === 1) return failures[0]
+  return detail(failures.map((failure) => (failure.code === 'detail' ? failure.text : failure.code)).join('; '))
 }
 
 function messageOf(error: unknown): string {

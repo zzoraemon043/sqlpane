@@ -1,4 +1,5 @@
 import type { ImportReport } from '../importer/importReport'
+import type { Notice } from './notice'
 
 export interface LoadedTable {
   name: string
@@ -7,6 +8,6 @@ export interface LoadedTable {
 
 export interface LoadResult {
   tables: LoadedTable[]
-  warnings: string[]
+  warnings: Notice[]
   importReport?: ImportReport
 }

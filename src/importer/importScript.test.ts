@@ -50,9 +50,9 @@ describe('script importer', () => {
       { id: 101, total: '19.99', status: 'new', token: null, flags: false },
       { id: 103, total: '5.50', status: 'shipped', token: '6162', flags: true },
     ])
-    expect(report.failedRows).toEqual([{ line: 58, table: 'orders', reason: 'value does not match the column type' }])
+    expect(report.failedRows).toEqual([{ line: 58, table: 'orders', reason: { code: 'valueTypeMismatch' } }])
     expect(report.zeroDatesAsNull).toBe(1)
-    expect(report.warnings).toContain('zero dates stored as NULL: 1')
+    expect(report.warnings).toContainEqual({ code: 'zeroDatesAsNull', count: 1 })
     expect(report.skippedByKind).toMatchObject({ SET: 4, 'SET NAMES': 1, 'SET TIME_ZONE': 2, 'SET CHARACTER_SET_CLIENT': 2, 'DROP TABLE': 2, 'LOCK TABLES': 2, 'UNLOCK TABLES': 2, 'ALTER TABLE': 2, DELIMITER: 2, CREATE: 1 })
     expect(report.skipped.find((entry) => entry.kind === 'LOCK TABLES')).toEqual({ line: 35, kind: 'LOCK TABLES', preview: 'LOCK TABLES `customers` WRITE' })
     expect(report.failedStatements).toEqual([])
@@ -89,23 +89,23 @@ describe('script importer', () => {
       { name: 'extra', sourceName: 'extra', rowCount: 1 },
       { name: 'taken_2', sourceName: 'taken', rowCount: 1 },
     ])
-    expect(report.warnings).toContain('extra: created with text columns because the script has no CREATE TABLE for it')
+    expect(report.warnings).toContainEqual({ code: 'createdWithTextColumns', table: 'extra' })
     expect(await selectRows(engine(), 'SELECT x FROM taken_2')).toEqual([{ x: 5 }])
   })
 
   it('reports statements it cannot import with their line numbers', async () => {
     const report = await importScript(engine(), chunked("SELECT 1;\nINSERT INTO nowhere VALUES (1);\nINSERT INTO t2 SELECT 1;\nINSERT INTO x VALUES ('open", 1000))
     expect(report.failedStatements).toEqual([
-      { line: 2, preview: 'INSERT INTO nowhere VALUES (1)', reason: 'table nowhere was not created in this script and the INSERT has no column list' },
-      { line: 3, preview: 'INSERT INTO t2 SELECT 1', reason: 'only INSERT ... VALUES is supported, found "SELECT"' },
-      { line: 4, preview: "INSERT INTO x VALUES ('open", reason: 'unterminated quoted text' },
+      { line: 2, preview: 'INSERT INTO nowhere VALUES (1)', reason: { code: 'detail', text: 'table nowhere was not created in this script and the INSERT has no column list' } },
+      { line: 3, preview: 'INSERT INTO t2 SELECT 1', reason: { code: 'detail', text: 'only INSERT ... VALUES is supported, found "SELECT"' } },
+      { line: 4, preview: "INSERT INTO x VALUES ('open", reason: { code: 'detail', text: 'unterminated quoted text' } },
     ])
     expect(report.skipped).toEqual([{ line: 1, kind: 'SELECT', preview: 'SELECT 1' }])
   })
 
   it('reports rows whose value count does not match', async () => {
     const report = await importScript(engine(), chunked('CREATE TABLE pairs (a int, b int);\nINSERT INTO pairs VALUES (1, 2),\n(3);', 1000))
-    expect(report.failedRows).toEqual([{ line: 3, table: 'pairs', reason: 'expected 2 values, found 1' }])
+    expect(report.failedRows).toEqual([{ line: 3, table: 'pairs', reason: { code: 'valueCountMismatch', expected: 2, found: 1 } }])
     expect(report.tables).toEqual([{ name: 'pairs', sourceName: 'pairs', rowCount: 1 }])
   })
 

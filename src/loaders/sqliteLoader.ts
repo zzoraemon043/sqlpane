@@ -23,7 +23,7 @@ export async function loadSqliteDatabase(
       const tableName = uniqueTableName(sourceName, taken)
       taken.push(tableName)
       const { failedLines } = await writeValueTable(engine, { name: tableName, columnNames, rows })
-      if (failedLines.length > 0) result.warnings.push(`${tableName}: rows not loaded ${failedLines.join(', ')}`)
+      if (failedLines.length > 0) result.warnings.push({ code: 'rowsNotLoaded', table: tableName, lines: failedLines })
       result.tables.push({ name: tableName, rowCount: rows.length - failedLines.length })
     }
   } finally {

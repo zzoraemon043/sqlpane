@@ -1,4 +1,5 @@
 import type { Messages } from './en'
+import { lineList } from '../loaders/notice'
 
 export const zhTW: Messages = {
   language: '語言',
@@ -90,4 +91,26 @@ export const zhTW: Messages = {
   offlinePreparing: '正在準備離線使用...',
   offlineReady: '已可離線使用',
   offlineFailed: '無法離線使用',
+  describeNotice: (notice) => {
+    switch (notice.code) {
+      case 'emptySheetSkipped':
+        return `已略過空白工作表：${notice.sheet}`
+      case 'rowsNotLoaded':
+        return `${notice.table}：未載入的資料列：${lineList(notice.lines)}`
+      case 'recordsSkipped':
+        return `未載入的紀錄：${lineList(notice.lines)}`
+      case 'zeroDatesAsNull':
+        return `0000-00-00 這類零日期已存成 NULL：${notice.count} 個`
+      case 'computedColumnsSkipped':
+        return `${notice.table}：未匯入計算欄位：${notice.columns.join('、')}`
+      case 'createdWithTextColumns':
+        return `${notice.table}：指令碼中沒有這張表的 CREATE TABLE，已用文字欄位建立`
+      case 'valueTypeMismatch':
+        return '資料值與欄位型別不符'
+      case 'valueCountMismatch':
+        return `應有 ${notice.expected} 個值，實際為 ${notice.found} 個`
+      case 'detail':
+        return notice.text
+    }
+  },
 }

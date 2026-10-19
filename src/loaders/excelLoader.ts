@@ -15,7 +15,7 @@ export async function loadExcelWorkbook(
   for (const sheet of readWorkbook(bytes)) {
     const nonEmptyRows = sheet.rows.filter((row) => row.some((value) => value !== null && value !== ''))
     if (nonEmptyRows.length === 0) {
-      result.warnings.push(`empty sheet skipped: ${sheet.name}`)
+      result.warnings.push({ code: 'emptySheetSkipped', sheet: sheet.name })
       continue
     }
     const [header, ...body] = nonEmptyRows

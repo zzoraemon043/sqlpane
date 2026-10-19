@@ -28,7 +28,7 @@ describe('excel loader', () => {
       { name: 'stock_Items_2', rowCount: 2 },
       { name: 'stock_Notes', rowCount: 1 },
     ])
-    expect(result.warnings).toEqual(['empty sheet skipped: Blank'])
+    expect(result.warnings).toEqual([{ code: 'emptySheetSkipped', sheet: 'Blank' }])
     expect(await selectRows(engine(), 'SELECT id, name, CAST(added AS VARCHAR) AS added FROM stock_Items_2 ORDER BY id')).toEqual([
       { id: 1, name: '蘋果', added: '2024-01-01 00:00:00' },
       { id: 2, name: 'pear', added: null },

@@ -1,3 +1,5 @@
+import { lineList, type Notice } from '../loaders/notice'
+
 export const en = {
   language: 'Language',
   appTagline: 'Drop in a file. Query it with SQL. Nothing leaves your browser.',
@@ -88,6 +90,28 @@ export const en = {
   offlinePreparing: 'Preparing offline use...',
   offlineReady: 'Ready for offline use',
   offlineFailed: 'Offline use is not available',
+  describeNotice: (notice: Notice): string => {
+    switch (notice.code) {
+      case 'emptySheetSkipped':
+        return `Empty sheet skipped: ${notice.sheet}`
+      case 'rowsNotLoaded':
+        return `${notice.table}: rows not loaded: ${lineList(notice.lines)}`
+      case 'recordsSkipped':
+        return `Records not loaded: ${lineList(notice.lines)}`
+      case 'zeroDatesAsNull':
+        return `Zero dates such as 0000-00-00 stored as NULL: ${notice.count}`
+      case 'computedColumnsSkipped':
+        return `${notice.table}: computed columns not imported: ${notice.columns.join(', ')}`
+      case 'createdWithTextColumns':
+        return `${notice.table}: created with text columns because the script has no CREATE TABLE for it`
+      case 'valueTypeMismatch':
+        return 'A value does not match the column type'
+      case 'valueCountMismatch':
+        return `Expected ${notice.expected} values, found ${notice.found}`
+      case 'detail':
+        return notice.text
+    }
+  },
 }
 
 export type Messages = typeof en
