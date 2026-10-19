@@ -1,0 +1,4 @@
+order_id,customer,amount,ordered_on
+1,Alice Example,120.50,2024-03-01
+2,Bob Sample,75.00,2024-03-02
+3,Alice Example,33.25,2024-03-05

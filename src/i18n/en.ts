@@ -1,0 +1,26 @@
+export const en = {
+  appTagline: 'Drop in a file. Query it with SQL. Nothing leaves your browser.',
+  engineStarting: 'Starting the SQL engine...',
+  engineFailed: 'The SQL engine could not start.',
+  openFiles: 'Open files',
+  dropHint: 'Drop files to open them as tables',
+  emptyWorkspace: 'Drag CSV, TSV, JSON, NDJSON, Parquet, Excel, SQLite or .sql files here, or use Open files.',
+  tables: 'Tables',
+  noTables: 'No tables yet.',
+  rename: 'Rename',
+  renameTable: 'New name for table',
+  save: 'Save',
+  cancel: 'Cancel',
+  drop: 'Remove',
+  loading: 'Opening',
+  loadedTables: 'Opened',
+  rows: 'rows',
+  unsupportedBackup:
+    'Database backups (.bak, .mdf) and MySQL data files cannot be opened. Export a .sql script instead: in SQL Server Management Studio use Tasks > Generate Scripts with "Types of data to script" set to "Schema and data"; for MySQL run mysqldump.',
+  unsupportedUnknown: 'This file type is not supported.',
+  loadFailed: 'Could not open',
+  dismiss: 'Dismiss',
+}
+
+export type Messages = typeof en
+export type MessageKey = keyof Messages
