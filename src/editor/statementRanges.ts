@@ -48,8 +48,13 @@ export function hasCode(text: string): boolean {
 export function statementAtOffset(text: string, offset: number): TextRange | undefined {
   const ranges = statementRanges(text).filter((range) => hasCode(text.slice(range.from, range.to)))
   if (ranges.length === 0) return undefined
-  const containing = ranges.find((range) => offset >= range.from && offset < range.to)
-  if (containing) return trimRange(text, containing)
+  const index = ranges.findIndex((range) => offset >= range.from && offset < range.to)
+  if (index !== -1) {
+    const containing = trimRange(text, ranges[index])
+    const previous = index > 0 ? trimRange(text, ranges[index - 1]) : undefined
+    if (previous && offset < containing.from && !text.slice(previous.to, offset).includes('\n')) return previous
+    return containing
+  }
   const before = ranges.filter((range) => range.to <= offset).at(-1)
   return trimRange(text, before ?? ranges[0])
 }

@@ -23,6 +23,13 @@ describe('statement ranges', () => {
     expect(textAt(text, text.length)).toBe('SELECT 3')
   })
 
+  it('runs the statement that ends on the cursor line', () => {
+    const text = 'SELECT 1 AS first;\nSELECT 2 AS second;'
+    expect(textAt(text, 18)).toBe('SELECT 1 AS first;')
+    expect(textAt(text, 19)).toBe('SELECT 2 AS second;')
+    expect(textAt('SELECT 1;  ', 11)).toBe('SELECT 1;')
+  })
+
   it('uses the previous statement when the cursor is after it', () => {
     const text = 'SELECT 1;\n\n   '
     expect(textAt(text, text.length)).toBe('SELECT 1;')
