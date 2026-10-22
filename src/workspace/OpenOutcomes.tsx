@@ -25,7 +25,7 @@ export function OpenOutcomes({ outcomes, onDismiss }: { outcomes: OpenOutcome[];
 function OutcomeLine({ outcome }: { outcome: OpenOutcome }) {
   const text = useMessages()
   if (outcome.status === 'loaded') {
-    const tables = outcome.result.tables.map((table) => `${table.name} (${table.rowCount.toLocaleString()} ${text.rows})`)
+    const tables = outcome.result.tables.map((table) => `${table.name} (${text.rows(table.rowCount)})`)
     return (
       <>
         {text.loadedTables} {outcome.fileName}: {tables.join(', ')}

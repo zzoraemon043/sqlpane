@@ -9,7 +9,7 @@ export function ImportProgressBar({ progress }: { progress: ImportProgress }) {
     <div className="import-progress">
       <progress max={100} value={percent} aria-label={text.importProgress} />
       <span>
-        {percent}% · {progress.statements.toLocaleString()} {text.statementsRead} · {progress.rowsInserted.toLocaleString()} {text.rowsImported}
+        {percent}% · {progress.statements.toLocaleString()} {text.statementsRead} · {text.rowsImported(progress.rowsInserted)}
       </span>
     </div>
   )

@@ -45,7 +45,7 @@ export function ResultGrid({ result, onViewChange }: ResultGridProps) {
   return (
     <div className="grid-wrapper">
       <p className="result-summary" data-testid="result-summary">
-        {result.rowCount.toLocaleString()} {text.rowCount}
+        {text.rowCount(result.rowCount)}
         {rows.length !== result.rowCount && ` · ${rows.length.toLocaleString()} ${text.shownAfterFilter}`} · {result.elapsedMs.toFixed(1)} {text.elapsed}
       </p>
       <div
