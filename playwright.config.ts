@@ -1,6 +1,6 @@
 import { defineConfig, devices } from '@playwright/test'
 
-const port = 4173
+const port = 4391
 const basePath = process.env.BASE_PATH ?? '/'
 
 export default defineConfig({
@@ -18,6 +18,6 @@ export default defineConfig({
   webServer: {
     command: `npm run preview -- --port ${port} --strictPort`,
     url: `http://localhost:${port}${basePath}`,
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: false,
   },
 })
