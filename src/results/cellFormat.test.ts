@@ -36,6 +36,15 @@ describe('cell formatting', () => {
     expect(result.rowCount).toBe(1)
   })
 
+  it('formats intervals the same way DuckDB casts them to text', async () => {
+    const sql = `SELECT i, i::VARCHAR AS text FROM (VALUES (INTERVAL 3 HOUR), (INTERVAL 14 MONTH), (INTERVAL 40 DAY), (NULL),
+      (INTERVAL '1 year 1 month 1 day 1.000001 second'), (-INTERVAL '2 days 3 hours 4.5 seconds'), (INTERVAL 0 SECOND)) t(i)`
+    const result = describeResult(sql, await engine().run(sql), 1)
+    for (let row = 0; row < result.rowCount; row++) {
+      expect(cellText(result, row, 0)).toBe(cellText(result, row, 1))
+    }
+  })
+
   it('scales unscaled decimal digits', () => {
     expect(scaleDecimal('125', 2)).toBe('1.25')
     expect(scaleDecimal('-5', 2)).toBe('-0.05')

@@ -1,4 +1,5 @@
 import { DataType, type Field } from 'apache-arrow'
+import { formatIntervalValue, intervalFromParts, type IntervalValue } from './intervalValues'
 
 export type CellFormatter = (value: unknown) => string | null
 
@@ -14,7 +15,7 @@ export function formatterFor(field: Field): CellFormatter {
   if (DataType.isBinary(type) || DataType.isLargeBinary?.(type) || DataType.isFixedSizeBinary(type)) {
     return guard((value) => `0x${Array.from(value as Uint8Array, (byte) => byte.toString(16).padStart(2, '0')).join('').toUpperCase()}`)
   }
-  if (DataType.isInterval(type)) return guard((value) => formatInterval(value as ArrayLike<number>))
+  if (DataType.isInterval(type)) return guard((value) => formatIntervalValue(isIntervalValue(value) ? value : intervalFromParts(type.unit, value as ArrayLike<number>)))
   if (DataType.isList(type) || DataType.isStruct(type) || DataType.isMap(type) || DataType.isFixedSizeList(type)) {
     return guard((value) => JSON.stringify(toPlain(value), bigintReplacer))
   }
@@ -51,11 +52,8 @@ function formatTimeOfDay(unit: number, value: number | bigint): string {
   return `${clock}.${fraction.toString().padStart(String(perSecond).length - 1, '0').replace(/0+$/, '')}`
 }
 
-function formatInterval(parts: ArrayLike<number>): string {
-  const pieces: string[] = []
-  if (parts[0]) pieces.push(`${parts[0]} months`)
-  if (parts[1]) pieces.push(`${parts[1]} days`)
-  return pieces.length > 0 ? pieces.join(' ') : '0 days'
+function isIntervalValue(value: unknown): value is IntervalValue {
+  return typeof value === 'object' && value !== null && 'nanoseconds' in value
 }
 
 function toPlain(value: unknown): unknown {

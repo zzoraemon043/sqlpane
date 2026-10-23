@@ -1,5 +1,6 @@
 import type { Table, Vector } from 'apache-arrow'
 import { formatterFor, sortKeyFor, type CellFormatter, type SortKey } from './cellFormat'
+import { isMonthDayNano, monthDayNanoReader } from './intervalValues'
 
 export interface ResultColumn {
   name: string
@@ -13,7 +14,7 @@ export interface QueryResult {
   id: string
   sql: string
   table: Table
-  vectors: Vector[]
+  readers: ((rowIndex: number) => unknown)[]
   columns: ResultColumn[]
   rowCount: number
   elapsedMs: number
@@ -29,12 +30,17 @@ export function describeResult(sql: string, table: Table, elapsedMs: number): Qu
     sortKey: sortKeyFor(field),
     numeric: numericTypeIds.has(field.typeId),
   }))
-  const vectors = table.schema.fields.map((_, index) => table.getChildAt(index)!)
-  return { id: crypto.randomUUID(), sql, table, vectors, columns, rowCount: table.numRows, elapsedMs }
+  const readers = table.schema.fields.map((_, index) => readerFor(table.getChildAt(index)!))
+  return { id: crypto.randomUUID(), sql, table, readers, columns, rowCount: table.numRows, elapsedMs }
+}
+
+function readerFor(vector: Vector): (rowIndex: number) => unknown {
+  if (isMonthDayNano(vector)) return monthDayNanoReader(vector)
+  return (rowIndex) => vector.get(rowIndex)
 }
 
 export function cellValue(result: QueryResult, rowIndex: number, columnIndex: number): unknown {
-  return result.vectors[columnIndex]?.get(rowIndex)
+  return result.readers[columnIndex]?.(rowIndex)
 }
 
 export function cellText(result: QueryResult, rowIndex: number, columnIndex: number): string | null {
