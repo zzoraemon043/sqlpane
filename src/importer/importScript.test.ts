@@ -103,6 +103,13 @@ describe('script importer', () => {
     expect(report.skipped).toEqual([{ line: 1, kind: 'SELECT', preview: 'SELECT 1' }])
   })
 
+  it('imports SQL Server INSERT statements that follow each other without a separator', async () => {
+    const script = 'CREATE TABLE [dbo].[people] ([id] int, [name] nvarchar(20))\nGO\nINSERT [dbo].[people] ([id], [name]) VALUES (1, N\'Ada\')\nINSERT [dbo].[people] ([id], [name]) VALUES (2, N\'Linus\')\nINSERT [dbo].[people] ([id], [name]) VALUES (3, N\'Grace\')\nGO\n'
+    const report = await importScript(engine(), chunked(script, 1000))
+    expect(report.tables).toEqual([{ name: 'people', sourceName: 'people', rowCount: 3 }])
+    expect(await selectRows(engine(), 'SELECT name FROM people ORDER BY id')).toEqual([{ name: 'Ada' }, { name: 'Linus' }, { name: 'Grace' }])
+  })
+
   it('reports rows whose value count does not match', async () => {
     const report = await importScript(engine(), chunked('CREATE TABLE pairs (a int, b int);\nINSERT INTO pairs VALUES (1, 2),\n(3);', 1000))
     expect(report.failedRows).toEqual([{ line: 3, table: 'pairs', reason: { code: 'valueCountMismatch', expected: 2, found: 1 } }])

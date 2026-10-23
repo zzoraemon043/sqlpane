@@ -8,7 +8,7 @@ import { isCreateTable, parseCreateTable, type TableDefinition } from './parseCr
 import { isInsert, parseInsert, type InsertStatement } from './parseInsert'
 import type { TextChunk } from './scriptChunks'
 import { StatementSplitter, type SplitEvent } from './statementSplitter'
-import { tokenize, TokenizeError } from './tokenizer'
+import { tokenize, TokenizeError, type Token } from './tokenizer'
 import { valueToColumnText } from './valueText'
 import { detail, type Notice } from '../loaders/notice'
 
@@ -121,10 +121,19 @@ class ScriptImporter {
     }
     try {
       if (isCreateTable(tokens)) await this.createTable(parseCreateTable(tokens, this.dialect), line)
-      else if (isInsert(tokens)) await this.insert(parseInsert(tokens), line)
+      else if (isInsert(tokens)) await this.insertEach(tokens, line)
       else this.builder.skip({ line, kind: statementKind(tokens), preview: previewOf(text) })
     } catch (error) {
       this.builder.failStatement({ line, preview: previewOf(text), reason: detail(messageOf(error)) })
+    }
+  }
+
+  private async insertEach(tokens: Token[], line: number) {
+    let remaining: Token[] | undefined = tokens
+    while (remaining) {
+      const statement = parseInsert(remaining)
+      await this.insert(statement, line)
+      remaining = statement.following
     }
   }
 

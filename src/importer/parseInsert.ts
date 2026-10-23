@@ -8,6 +8,7 @@ export interface InsertStatement {
   qualifiedName: string[]
   columns?: string[]
   rows: ParsedRow[]
+  following?: Token[]
 }
 
 const insertModifiers = new Set(['LOW_PRIORITY', 'DELAYED', 'HIGH_PRIORITY', 'IGNORE'])
@@ -35,7 +36,8 @@ export function parseInsert(tokens: Token[]): InsertStatement {
   do {
     rows.push(readRow(cursor))
   } while (cursor.acceptSymbol(','))
-  return { qualifiedName, columns, rows }
+  const rest = tokens.slice(cursor.position)
+  return { qualifiedName, columns, rows, following: isInsert(rest) ? rest : undefined }
 }
 
 function readColumnList(cursor: TokenCursor): string[] {
