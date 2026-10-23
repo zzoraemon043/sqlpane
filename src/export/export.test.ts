@@ -41,6 +41,12 @@ describe('export', () => {
     ])
   })
 
+  it('keeps every column in JSON when names repeat', async () => {
+    const sql = 'SELECT 1 AS a, 2 AS a, 3 AS a_2'
+    const result = describeResult(sql, await engine().run(sql), 1)
+    expect(JSON.parse(exportJson(result, [0]))).toEqual([{ a: 1, a_3: 2, a_2: 3 }])
+  })
+
   it('writes Parquet that reads back with the same values', async () => {
     const bytes = exportParquet(await sample(), [0, 1])
     const rows = await parquetReadObjects({ file: bytes.buffer as ArrayBuffer })
