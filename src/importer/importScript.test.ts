@@ -81,6 +81,20 @@ describe('script importer', () => {
     expect(report.skippedByKind).toMatchObject({ GO: 13, USE: 1, 'SET ANSI_NULLS': 1, 'SET QUOTED_IDENTIFIER': 1, 'SET IDENTITY_INSERT': 2, 'ALTER TABLE': 1 })
   })
 
+  it('decodes binary date and time literals from older SSMS scripts', async () => {
+    const script = [
+      'CREATE TABLE [dbo].[Events]([Id] [int] NOT NULL, [At] [datetime] NULL, [Day] [date] NULL, [Precise] [datetime2](7) NULL, [Short] [smalldatetime] NULL)',
+      'GO',
+      'INSERT [dbo].[Events] ([Id], [At], [Day], [Precise], [Short]) VALUES (1, CAST(0x0000A9E5018B81FF AS DateTime), CAST(0x5B950A00 AS Date), CAST(0x075058C4109B3F3F0B AS DateTime2), CAST(0xA9E502D0 AS SmallDateTime))',
+      'GO',
+    ].join('\n')
+    const report = await importScript(engine(), chunked(script, 1000))
+    expect(report.failedRows).toEqual([])
+    expect(await selectRows(engine(), 'SELECT CAST("At" AS VARCHAR) AS "At", CAST("Day" AS VARCHAR) AS "Day", CAST(Precise AS VARCHAR) AS Precise, CAST(Short AS VARCHAR) AS Short FROM Events')).toEqual([
+      { At: '2019-01-30 23:59:59.996667', Day: '1900-01-01', Precise: '2019-01-29 18:30:00.1234', Short: '2019-01-30 12:00:00' },
+    ])
+  })
+
   it('renames imported tables that clash with open tables and creates missing tables from column lists', async () => {
     const report = await importScript(engine(), chunked('INSERT INTO extra (a, b) VALUES (1, 2);\nCREATE TABLE taken (x int);\nINSERT INTO taken VALUES (5);', 1000), {
       existingTableNames: ['taken'],

@@ -4,7 +4,7 @@ export type SqlValue =
   | { kind: 'null' }
   | { kind: 'string'; text: string; binary: boolean }
   | { kind: 'number'; text: string }
-  | { kind: 'hex'; hex: string }
+  | { kind: 'hex'; hex: string; castType?: string }
   | { kind: 'bits'; bits: string }
   | { kind: 'boolean'; value: boolean }
 
@@ -74,8 +74,10 @@ function parseCast(cursor: TokenCursor): SqlValue {
   cursor.expectSymbol('(')
   const inner = parseOperand(cursor)
   if (!cursor.acceptWord('AS')) throw new UnsupportedValueError('unsupported CAST expression')
+  const target = cursor.peek()
+  const castType = target?.kind === 'word' ? target.upper : target?.kind === 'name' ? target.text.toUpperCase() : undefined
   skipUntilClosingParenthesis(cursor)
-  return inner
+  return inner.kind === 'hex' && castType !== undefined ? { ...inner, castType } : inner
 }
 
 function parseConvert(cursor: TokenCursor): SqlValue {

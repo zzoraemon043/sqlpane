@@ -1,4 +1,5 @@
 import { bytesToHex } from '../loaders/columnTypes'
+import { isSqlServerTemporal, sqlServerTemporalText } from './sqlServerTemporal'
 import type { SqlValue } from './sqlValue'
 
 export interface ValueTextResult {
@@ -7,6 +8,8 @@ export interface ValueTextResult {
 }
 
 const zeroDate = /^0000-00-00/
+
+const temporalColumns = new Set(['TIMESTAMP', 'DATE', 'TIME'])
 
 export function valueToColumnText(value: SqlValue, columnType: string): ValueTextResult {
   const type = columnType.toUpperCase()
@@ -20,6 +23,7 @@ export function valueToColumnText(value: SqlValue, columnType: string): ValueTex
     case 'string':
       return stringToText(value.text, type)
     case 'hex':
+      if (isSqlServerTemporal(value.castType) && temporalColumns.has(type)) return { text: sqlServerTemporalText(value.hex, value.castType, type) }
       return { text: hexToText(value.hex, type) }
     case 'bits':
       return { text: bitsToText(value.bits, type) }
