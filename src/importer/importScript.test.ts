@@ -124,6 +124,21 @@ describe('script importer', () => {
     expect(await selectRows(engine(), 'SELECT name FROM people ORDER BY id')).toEqual([{ name: 'Ada' }, { name: 'Linus' }, { name: 'Grace' }])
   })
 
+  it('keeps the good rows of an extended INSERT when one row breaks a key', async () => {
+    const script = 'CREATE TABLE `users` (`id` int NOT NULL, `name` varchar(10), PRIMARY KEY (`id`));\nINSERT INTO `users` VALUES (1,\'a\'),(2,\'b\'),(3,\'c\');\nINSERT INTO `users` VALUES (4,\'d\'),(4,\'dup\'),(5,\'e\');\n'
+    const report = await importScript(engine(), chunked(script, 1000))
+    expect(report.tables).toEqual([{ name: 'users', sourceName: 'users', rowCount: 5 }])
+    expect(report.failedRows).toHaveLength(1)
+    expect(report.failedRows[0]).toMatchObject({ line: 3, table: 'users' })
+    expect(await selectRows(engine(), 'SELECT id, name FROM users ORDER BY id')).toEqual([
+      { id: 1, name: 'a' },
+      { id: 2, name: 'b' },
+      { id: 3, name: 'c' },
+      { id: 4, name: 'd' },
+      { id: 5, name: 'e' },
+    ])
+  })
+
   it('reports rows whose value count does not match', async () => {
     const report = await importScript(engine(), chunked('CREATE TABLE pairs (a int, b int);\nINSERT INTO pairs VALUES (1, 2),\n(3);', 1000))
     expect(report.failedRows).toEqual([{ line: 3, table: 'pairs', reason: { code: 'valueCountMismatch', expected: 2, found: 1 } }])

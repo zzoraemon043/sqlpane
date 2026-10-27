@@ -73,6 +73,7 @@ export async function appendTextRows(
 async function stageRows(engine: SqlEngine, columnCount: number, rows: (string | null)[][], lineNumbers: number[]) {
   const vectors: Record<string, Vector> = {
     line: int32Vector(lineNumbers),
+    row_index: int32Vector(rows.map((_, index) => index)),
   }
   for (let columnIndex = 0; columnIndex < columnCount; columnIndex++) {
     vectors[`c${columnIndex}`] = utf8Vector(rows.map((row) => row[columnIndex] ?? null))
@@ -106,14 +107,14 @@ async function insertRowByRow(
   failedLines: number[],
   failures: Notice[],
 ): Promise<AppendOutcome> {
-  const candidates = await engine.run(`SELECT line FROM ${stagingTableName} WHERE ${allConvertible} ORDER BY line`)
+  const candidates = await engine.run(`SELECT row_index, line FROM ${stagingTableName} WHERE ${allConvertible} ORDER BY row_index`)
   let inserted = 0
   const lines = [...failedLines]
   const messages = [...failures]
   for (const row of candidates.toArray()) {
     const line = Number(row.line)
     try {
-      await engine.run(insertSql(`line = ${line}`))
+      await engine.run(insertSql(`row_index = ${Number(row.row_index)}`))
       inserted++
     } catch (error) {
       lines.push(line)
