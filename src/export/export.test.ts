@@ -41,6 +41,20 @@ describe('export', () => {
     ])
   })
 
+  it('keeps HUGEINT, wide decimals and microseconds exact in JSON and the grid', async () => {
+    const sql = "SELECT 9007199254740993::HUGEINT AS huge, 12345678901234567.89::DECIMAL(19,2) AS wide, TIMESTAMP '2024-01-01 12:00:00.123456' AS micro, TIMESTAMP '1969-12-31 23:59:59.5' AS before_epoch"
+    const result = describeResult(sql, await engine().run(sql), 1)
+    expect(JSON.parse(exportJson(result, [0]))).toEqual([
+      { huge: '9007199254740993', wide: '12345678901234567.89', micro: '2024-01-01 12:00:00.123456', before_epoch: '1969-12-31 23:59:59.5' },
+    ])
+    expect(result.columns.map((column, index) => column.format(result.readers[index](0)))).toEqual([
+      '9007199254740993',
+      '12345678901234567.89',
+      '2024-01-01 12:00:00.123456',
+      '1969-12-31 23:59:59.5',
+    ])
+  })
+
   it('keeps every column in JSON when names repeat', async () => {
     const sql = 'SELECT 1 AS a, 2 AS a, 3 AS a_2'
     const result = describeResult(sql, await engine().run(sql), 1)

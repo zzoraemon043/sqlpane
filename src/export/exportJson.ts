@@ -1,5 +1,6 @@
-import type { QueryResult } from '../results/queryResult'
-import { exportKindOf, plainValue } from './exportValues'
+import { cellText, cellValue, type QueryResult } from '../results/queryResult'
+import { formatTimestampValue, TimestampValue } from '../results/timestampValues'
+import { exportKindOf, plainValue, type ExportKind } from './exportValues'
 import { formatTimestamp } from '../loaders/columnTypes'
 
 export function exportJson(result: QueryResult, rows: ArrayLike<number>): string {
@@ -9,7 +10,7 @@ export function exportJson(result: QueryResult, rows: ArrayLike<number>): string
   for (let position = 0; position < rows.length; position++) {
     const record: Record<string, unknown> = {}
     keys.forEach((key, columnIndex) => {
-      record[key] = jsonValue(plainValue(result, rows[position], columnIndex, kinds[columnIndex]), kinds[columnIndex])
+      record[key] = exactJsonValue(result, rows[position], columnIndex, kinds[columnIndex])
     })
     records.push(record)
   }
@@ -31,6 +32,21 @@ export function uniqueKeys(names: readonly string[]): string[] {
     seen.add(key)
     return key
   })
+}
+
+function exactJsonValue(result: QueryResult, rowIndex: number, columnIndex: number, kind: ExportKind): unknown {
+  const raw = cellValue(result, rowIndex, columnIndex)
+  if (raw instanceof TimestampValue) return formatTimestampValue(raw)
+  if (kind === 'decimal' && raw !== null && raw !== undefined) return decimalJson(cellText(result, rowIndex, columnIndex) ?? '')
+  return jsonValue(plainValue(result, rowIndex, columnIndex, kind), kind)
+}
+
+const maxExactDigits = 15
+
+function decimalJson(text: string): number | string {
+  const digits = text.replace(/^-/, '').replace('.', '').replace(/^0+/, '')
+  if (digits.length <= maxExactDigits) return Number(text)
+  return /^-?\d+$/.test(text) ? jsonValue(BigInt(text), 'bigint') as number | string : text
 }
 
 function jsonValue(value: ReturnType<typeof plainValue>, kind: ReturnType<typeof exportKindOf>): unknown {

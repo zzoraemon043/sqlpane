@@ -1,6 +1,7 @@
 import type { Table, Vector } from 'apache-arrow'
 import { formatterFor, sortKeyFor, type CellFormatter, type SortKey } from './cellFormat'
 import { isMonthDayNano, monthDayNanoReader } from './intervalValues'
+import { isTimestampVector, timestampReader } from './timestampValues'
 
 export interface ResultColumn {
   name: string
@@ -36,6 +37,7 @@ export function describeResult(sql: string, table: Table, elapsedMs: number): Qu
 
 function readerFor(vector: Vector): (rowIndex: number) => unknown {
   if (isMonthDayNano(vector)) return monthDayNanoReader(vector)
+  if (isTimestampVector(vector)) return timestampReader(vector)
   return (rowIndex) => vector.get(rowIndex)
 }
 

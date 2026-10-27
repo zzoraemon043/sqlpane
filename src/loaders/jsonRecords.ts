@@ -5,8 +5,21 @@ export interface RecordRows {
   rows: unknown[][]
 }
 
+const int64Min = -(2n ** 63n)
+const int64Max = 2n ** 63n - 1n
+
+function exactIntegers(_key: string, value: unknown, context?: { source?: string }): unknown {
+  if (typeof value !== 'number' || Number.isSafeInteger(value) || !context?.source || !/^-?\d+$/.test(context.source)) return value
+  const exact = BigInt(context.source)
+  return exact >= int64Min && exact <= int64Max ? exact : value
+}
+
+function parseExact(text: string): unknown {
+  return JSON.parse(text, exactIntegers as Parameters<typeof JSON.parse>[1])
+}
+
 export function parseJsonDocument(text: string): unknown[] {
-  const parsed: unknown = JSON.parse(text)
+  const parsed: unknown = parseExact(text)
   return Array.isArray(parsed) ? parsed : [parsed]
 }
 
@@ -16,7 +29,7 @@ export function parseJsonLines(text: string): unknown[] {
   lines.forEach((line, index) => {
     if (line.trim() === '') return
     try {
-      records.push(JSON.parse(line))
+      records.push(parseExact(line))
     } catch {
       throw new Error(`invalid JSON on line ${index + 1}`)
     }

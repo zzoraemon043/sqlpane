@@ -42,6 +42,16 @@ describe('json loader', () => {
     ])
   })
 
+  it('keeps integers above 2^53 exact', async () => {
+    await loadJsonText(engine(), 'wide_ids', '[{"id": 9007199254740993}, {"id": -9007199254740995}]', 'document')
+    expect(await selectRows(engine(), 'SELECT CAST(id AS VARCHAR) AS id FROM wide_ids ORDER BY id DESC')).toEqual([
+      { id: '9007199254740993' },
+      { id: '-9007199254740995' },
+    ])
+    await loadJsonText(engine(), 'wide_lines', '{"id": 9007199254740993}\n{"id": 1e400}\n', 'lines')
+    expect(await selectRows(engine(), 'SELECT typeof(id) AS kind FROM wide_lines LIMIT 1')).toEqual([{ kind: 'DOUBLE' }])
+  })
+
   it('loads newline delimited JSON', async () => {
     await loadJsonText(engine(), 'events', '{"kind":"open"}\n{"kind":"close","extra":1}\n', 'lines')
     expect(await selectRows(engine(), 'SELECT * FROM events')).toEqual([

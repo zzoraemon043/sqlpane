@@ -1,5 +1,6 @@
 import { DataType, type Field } from 'apache-arrow'
 import { formatIntervalValue, intervalFromParts, type IntervalValue } from './intervalValues'
+import { formatTimestampValue, TimestampValue } from './timestampValues'
 
 export type CellFormatter = (value: unknown) => string | null
 
@@ -9,7 +10,7 @@ export function formatterFor(field: Field): CellFormatter {
   if (DataType.isDate(type)) return guard((value) => new Date(Number(value)).toISOString().slice(0, 10))
   if (DataType.isTimestamp(type)) {
     const suffix = type.timezone ? '+00' : ''
-    return guard((value) => `${formatTimestampMilliseconds(Number(value))}${suffix}`)
+    return guard((value) => `${value instanceof TimestampValue ? formatTimestampValue(value) : formatTimestampMilliseconds(Number(value))}${suffix}`)
   }
   if (DataType.isTime(type)) return guard((value) => formatTimeOfDay(type.unit, value as number | bigint))
   if (DataType.isBinary(type) || DataType.isLargeBinary?.(type) || DataType.isFixedSizeBinary(type)) {
@@ -71,7 +72,8 @@ export function sortKeyFor(field: Field): (value: unknown) => SortKey | null {
   const type = field.type
   const format = formatterFor(field)
   if (DataType.isDecimal(type)) return (value) => (value === null || value === undefined ? null : BigInt(String(value)))
-  if (DataType.isInt(type) || DataType.isFloat(type) || DataType.isDate(type) || DataType.isTimestamp(type) || DataType.isBool(type)) {
+  if (DataType.isTimestamp(type)) return (value) => (value === null || value === undefined ? null : value instanceof TimestampValue ? value.epoch : (value as number))
+  if (DataType.isInt(type) || DataType.isFloat(type) || DataType.isDate(type) || DataType.isBool(type)) {
     return (value) => (value === null || value === undefined ? null : (value as number | bigint | boolean))
   }
   if (DataType.isTime(type)) return (value) => (value === null || value === undefined ? null : BigInt(value as number))
