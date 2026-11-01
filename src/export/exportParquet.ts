@@ -17,7 +17,11 @@ const parquetTypes: Record<ExportKind, ColumnSource['type']> = {
 export function exportParquet(result: QueryResult, rows: ArrayLike<number>): Uint8Array {
   const columnData: ColumnSource[] = result.columns.map((column, columnIndex) => {
     const kind = integerKind(result, columnIndex)
-    const data = Array.from({ length: rows.length }, (_, position) => plainValue(result, rows[position], columnIndex, exportKindOf(result, columnIndex)))
+    const exportKind = exportKindOf(result, columnIndex)
+    const data = Array.from({ length: rows.length }, (_, position) => {
+      const value = plainValue(result, rows[position], columnIndex, exportKind)
+      return typeof value === 'string' && (exportKind === 'date' || exportKind === 'timestamp') ? null : value
+    })
     return { name: column.name, data, type: kind === 'int32' ? 'INT32' : parquetTypes[exportKindOf(result, columnIndex)], nullable: true }
   })
   return new Uint8Array(parquetWriteBuffer({ columnData }))

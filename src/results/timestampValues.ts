@@ -1,4 +1,5 @@
 import { DataType, type Vector } from 'apache-arrow'
+import { formatEpoch } from './calendar'
 
 const unitsPerSecond = [1n, 1_000n, 1_000_000n, 1_000_000_000n]
 
@@ -44,14 +45,5 @@ function rawEpoch(values: ArrayLike<number | bigint>, offset: number): bigint {
 }
 
 export function formatTimestampValue(value: TimestampValue): string {
-  const perSecond = value.perSecond
-  let seconds = value.epoch / perSecond
-  let fraction = value.epoch % perSecond
-  if (fraction < 0n) {
-    seconds -= 1n
-    fraction += perSecond
-  }
-  const clock = new Date(Number(seconds) * 1000).toISOString().replace('T', ' ').slice(0, 19)
-  if (fraction === 0n) return clock
-  return `${clock}.${fraction.toString().padStart(String(perSecond).length - 1, '0').replace(/0+$/, '')}`
+  return formatEpoch(value.epoch, value.perSecond)
 }

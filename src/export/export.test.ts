@@ -55,6 +55,16 @@ describe('export', () => {
     ])
   })
 
+  it('exports infinity and far dates without throwing', async () => {
+    const sql = "SELECT DATE 'infinity' AS d, TIMESTAMP '-infinity' AS t, DATE '10000-01-01' AS far"
+    const result = describeResult(sql, await engine().run(sql), 1)
+    expect(exportCsv(result, [0])).toContain('infinity,-infinity,10000-01-01')
+    expect(JSON.parse(exportJson(result, [0]))).toEqual([{ d: 'infinity', t: '-infinity', far: '10000-01-01' }])
+    expect(() => exportExcel(result, [0])).not.toThrow()
+    const parquet = await parquetReadObjects({ file: exportParquet(result, [0]).buffer as ArrayBuffer })
+    expect(parquet[0].d).toBeNull()
+  })
+
   it('keeps every column in JSON when names repeat', async () => {
     const sql = 'SELECT 1 AS a, 2 AS a, 3 AS a_2'
     const result = describeResult(sql, await engine().run(sql), 1)

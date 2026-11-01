@@ -1,5 +1,6 @@
 import { DataType, type Field } from 'apache-arrow'
 import { formatIntervalValue, intervalFromParts, type IntervalValue } from './intervalValues'
+import { formatDateMilliseconds, formatEpoch, isInfiniteEpoch } from './calendar'
 import { formatTimestampValue, TimestampValue } from './timestampValues'
 
 export type CellFormatter = (value: unknown) => string | null
@@ -7,10 +8,13 @@ export type CellFormatter = (value: unknown) => string | null
 export function formatterFor(field: Field): CellFormatter {
   const type = field.type
   if (DataType.isDecimal(type)) return guard((value) => scaleDecimal(String(value), type.scale))
-  if (DataType.isDate(type)) return guard((value) => new Date(Number(value)).toISOString().slice(0, 10))
+  if (DataType.isDate(type)) return guard((value) => formatDateMilliseconds(Number(value)))
   if (DataType.isTimestamp(type)) {
     const suffix = type.timezone ? '+00' : ''
-    return guard((value) => `${value instanceof TimestampValue ? formatTimestampValue(value) : formatTimestampMilliseconds(Number(value))}${suffix}`)
+    return guard((value) => {
+      const text = value instanceof TimestampValue ? formatTimestampValue(value) : formatTimestampMilliseconds(Number(value))
+      return value instanceof TimestampValue && isInfiniteEpoch(value.epoch) ? text : `${text}${suffix}`
+    })
   }
   if (DataType.isTime(type)) return guard((value) => formatTimeOfDay(type.unit, value as number | bigint))
   if (DataType.isBinary(type) || DataType.isLargeBinary?.(type) || DataType.isFixedSizeBinary(type)) {
@@ -37,8 +41,7 @@ export function scaleDecimal(unscaled: string, scale: number): string {
 }
 
 export function formatTimestampMilliseconds(milliseconds: number): string {
-  const iso = new Date(milliseconds).toISOString().replace('T', ' ').replace('Z', '')
-  return iso.endsWith('.000') ? iso.slice(0, -4) : iso
+  return formatEpoch(BigInt(Math.round(milliseconds)), 1000n)
 }
 
 const unitsPerSecond = [1, 1_000, 1_000_000, 1_000_000_000]

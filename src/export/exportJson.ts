@@ -37,6 +37,7 @@ export function uniqueKeys(names: readonly string[]): string[] {
 function exactJsonValue(result: QueryResult, rowIndex: number, columnIndex: number, kind: ExportKind): unknown {
   const raw = cellValue(result, rowIndex, columnIndex)
   if (raw instanceof TimestampValue) return formatTimestampValue(raw)
+  if (kind === 'date' && raw !== null && raw !== undefined) return cellText(result, rowIndex, columnIndex)
   if (kind === 'decimal' && raw !== null && raw !== undefined) return decimalJson(cellText(result, rowIndex, columnIndex) ?? '')
   return jsonValue(plainValue(result, rowIndex, columnIndex, kind), kind)
 }

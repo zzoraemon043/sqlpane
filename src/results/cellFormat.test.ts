@@ -6,6 +6,17 @@ import { cellText, describeResult } from './queryResult'
 const engine = startSharedEngine()
 
 describe('cell formatting', () => {
+  it('prints infinity, far years and BC dates like DuckDB', async () => {
+    const sql = `SELECT d, d::VARCHAR AS text FROM (VALUES (DATE 'infinity'), (DATE '-infinity'), (DATE '10000-01-01'), (make_date(-43, 3, 15)), (make_date(0, 1, 1)), (DATE '1969-12-31')) AS t(d)`
+    const result = describeResult(sql, await engine().run(sql), 1)
+    for (let row = 0; row < result.rowCount; row++) {
+      expect(cellText(result, row, 0), `row ${row}`).toBe(cellText(result, row, 1))
+    }
+    const timestamps = "SELECT TIMESTAMP 'infinity' AS a, TIMESTAMP '-infinity' AS b, TIMESTAMPTZ 'infinity' AS c, make_timestamp(-43, 3, 15, 12, 0, 0) AS d, TIMESTAMP '10000-01-01 00:00:01.5' AS e, TIMESTAMPTZ '2024-01-02 03:04:05+00' AS f"
+    const stamps = describeResult(timestamps, await engine().run(timestamps), 1)
+    expect(stamps.columns.map((_, index) => cellText(stamps, 0, index))).toEqual(['infinity', '-infinity', 'infinity', '0044-03-15 (BC) 12:00:00', '10000-01-01 00:00:01.5', '2024-01-02 03:04:05+00'])
+  })
+
   it('formats every common DuckDB type the way it reads in SQL', async () => {
     const sql = `SELECT 1::TINYINT a, 9007199254740993::BIGINT b, 1.25::DECIMAL(10,2) c, -0.05::DECIMAL(4,2) d, 1.5::DOUBLE e, 'x' f, true g,
       DATE '2024-01-02' h, TIMESTAMP '2024-01-02 03:04:05' i, TIMESTAMP '2024-01-02 03:04:05.123' j, TIME '01:02:03.5' k,

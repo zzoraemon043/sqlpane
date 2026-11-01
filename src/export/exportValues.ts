@@ -28,8 +28,10 @@ export function plainValue(result: QueryResult, rowIndex: number, columnIndex: n
     case 'boolean':
       return Boolean(raw)
     case 'timestamp':
-    case 'date':
-      return new Date(Number(raw))
+    case 'date': {
+      const date = new Date(Number(raw))
+      return Number.isNaN(date.getTime()) ? cellText(result, rowIndex, columnIndex) : date
+    }
     case 'decimal':
       return Number(cellText(result, rowIndex, columnIndex))
     case 'text':
