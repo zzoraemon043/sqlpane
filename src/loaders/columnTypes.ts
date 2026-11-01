@@ -1,4 +1,4 @@
-export type InferredType = 'BOOLEAN' | 'BIGINT' | 'DOUBLE' | 'TIMESTAMP' | 'BLOB' | 'VARCHAR'
+export type InferredType = 'BOOLEAN' | 'BIGINT' | 'HUGEINT' | 'DOUBLE' | 'TIMESTAMP' | 'BLOB' | 'VARCHAR'
 
 export function inferColumnType(values: Iterable<unknown>): InferredType {
   let seen: InferredType | undefined
@@ -11,9 +11,12 @@ export function inferColumnType(values: Iterable<unknown>): InferredType {
   return seen ?? 'VARCHAR'
 }
 
+const minInt64 = -(2n ** 63n)
+const maxInt64 = 2n ** 63n - 1n
+
 function typeOfValue(value: unknown): InferredType {
   if (typeof value === 'boolean') return 'BOOLEAN'
-  if (typeof value === 'bigint') return 'BIGINT'
+  if (typeof value === 'bigint') return value >= minInt64 && value <= maxInt64 ? 'BIGINT' : 'HUGEINT'
   if (typeof value === 'number') return Number.isSafeInteger(value) ? 'BIGINT' : 'DOUBLE'
   if (value instanceof Date) return 'TIMESTAMP'
   if (value instanceof Uint8Array) return 'BLOB'
@@ -22,8 +25,8 @@ function typeOfValue(value: unknown): InferredType {
 
 function widen(left: InferredType, right: InferredType): InferredType {
   if (left === right) return left
-  const numeric = new Set<InferredType>(['BIGINT', 'DOUBLE'])
-  if (numeric.has(left) && numeric.has(right)) return 'DOUBLE'
+  const numeric = new Set<InferredType>(['BIGINT', 'HUGEINT', 'DOUBLE'])
+  if (numeric.has(left) && numeric.has(right)) return left === 'DOUBLE' || right === 'DOUBLE' ? 'DOUBLE' : 'HUGEINT'
   return 'VARCHAR'
 }
 

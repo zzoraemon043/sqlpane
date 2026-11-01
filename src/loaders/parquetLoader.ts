@@ -11,6 +11,9 @@ export async function loadParquetBuffer(engine: SqlEngine, tableName: string, bu
   const records = await parquetReadObjects({ file: buffer, metadata, compressors, utf8: true })
   const columnNames = uniqueColumnNames(fieldNames)
   const rows = records.map((record) => fieldNames.map((name) => record[name]))
-  await writeValueTable(engine, { name: tableName, columnNames, rows })
-  return { tables: [{ name: tableName, rowCount: rows.length }], warnings: [] }
+  const { failedLines } = await writeValueTable(engine, { name: tableName, columnNames, rows })
+  return {
+    tables: [{ name: tableName, rowCount: rows.length - failedLines.length }],
+    warnings: failedLines.length > 0 ? [{ code: 'rowsNotLoaded', table: tableName, lines: failedLines }] : [],
+  }
 }

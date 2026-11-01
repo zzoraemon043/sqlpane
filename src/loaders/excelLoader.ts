@@ -23,12 +23,13 @@ export async function loadExcelWorkbook(
     const columnNames = uniqueColumnNames(Array.from({ length: width }, (_, index) => headerText(header[index])))
     const tableName = uniqueTableName(`${baseName}_${sheet.name}`, taken)
     taken.push(tableName)
-    await writeValueTable(engine, {
+    const { failedLines } = await writeValueTable(engine, {
       name: tableName,
       columnNames,
       rows: body.map((row) => Array.from({ length: width }, (_, index) => row[index] ?? null)),
     })
-    result.tables.push({ name: tableName, rowCount: body.length })
+    if (failedLines.length > 0) result.warnings.push({ code: 'rowsNotLoaded', table: tableName, lines: failedLines })
+    result.tables.push({ name: tableName, rowCount: body.length - failedLines.length })
   }
   return result
 }

@@ -12,6 +12,13 @@ describe('column type inference', () => {
     expect(inferColumnType([null, null])).toBe('VARCHAR')
   })
 
+  it('uses HUGEINT for integers beyond the signed 64-bit range', () => {
+    expect(inferColumnType([1n, 18446744073709551615n])).toBe('HUGEINT')
+    expect(inferColumnType([9223372036854775807n])).toBe('BIGINT')
+    expect(inferColumnType([-9223372036854775809n, 1])).toBe('HUGEINT')
+    expect(inferColumnType([18446744073709551615n, 1.5])).toBe('DOUBLE')
+  })
+
   it('falls back to text for mixed values', () => {
     expect(inferColumnType([1, 'a'])).toBe('VARCHAR')
     expect(inferColumnType([true, 1])).toBe('VARCHAR')
