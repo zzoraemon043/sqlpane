@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { selectRows, startSharedEngine } from '../test-support/sharedEngine'
 import { compareSortKeys, formatTimestampMilliseconds, scaleDecimal } from './cellFormat'
-import { cellText, describeResult } from './queryResult'
+import { cellText, cellValue, describeResult } from './queryResult'
 
 const engine = startSharedEngine()
 
@@ -45,6 +45,16 @@ describe('cell formatting', () => {
     expect(result.columns.find((column) => column.name === 'c')?.numeric).toBe(true)
     expect(result.columns.find((column) => column.name === 'f')?.numeric).toBe(false)
     expect(result.rowCount).toBe(1)
+  })
+
+  it('prints UHUGEINT as an unsigned number and sorts it numerically', async () => {
+    const sql = 'SELECT v FROM (VALUES (340282366920938463463374607431768211455::UHUGEINT), (5::UHUGEINT), (256::UHUGEINT), (NULL::UHUGEINT)) AS t(v)'
+    const result = describeResult(sql, await engine().run(sql), 1)
+    const texts = Array.from({ length: result.rowCount }, (_, row) => cellText(result, row, 0))
+    expect(texts).toEqual(['340282366920938463463374607431768211455', '5', '256', null])
+    expect(result.columns[0].numeric).toBe(true)
+    const keys = Array.from({ length: result.rowCount }, (_, row) => result.columns[0].sortKey(cellValue(result, row, 0)))
+    expect([...keys].sort(compareSortKeys)).toEqual([5n, 256n, 340282366920938463463374607431768211455n, null])
   })
 
   it('formats intervals the same way DuckDB casts them to text', async () => {

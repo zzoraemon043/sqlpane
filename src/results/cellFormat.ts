@@ -17,6 +17,7 @@ export function formatterFor(field: Field): CellFormatter {
     })
   }
   if (DataType.isTime(type)) return guard((value) => formatTimeOfDay(type.unit, value as number | bigint))
+  if (isUnsigned128(type)) return guard((value) => unsigned128(value as Uint8Array).toString())
   if (DataType.isBinary(type) || DataType.isLargeBinary?.(type) || DataType.isFixedSizeBinary(type)) {
     return guard((value) => `0x${Array.from(value as Uint8Array, (byte) => byte.toString(16).padStart(2, '0')).join('').toUpperCase()}`)
   }
@@ -25,6 +26,17 @@ export function formatterFor(field: Field): CellFormatter {
     return guard((value) => JSON.stringify(toPlain(value), bigintReplacer))
   }
   return guard((value) => (typeof value === 'object' ? JSON.stringify(toPlain(value), bigintReplacer) : String(value)))
+}
+
+// DuckDB sends UHUGEINT as a 16-byte little-endian fixed binary; no other DuckDB type arrives this way.
+export function isUnsigned128(type: DataType): boolean {
+  return DataType.isFixedSizeBinary(type) && type.byteWidth === 16
+}
+
+function unsigned128(bytes: Uint8Array): bigint {
+  let result = 0n
+  for (let index = bytes.length - 1; index >= 0; index--) result = (result << 8n) | BigInt(bytes[index])
+  return result
 }
 
 function guard(format: (value: unknown) => string): CellFormatter {
@@ -79,6 +91,7 @@ export function sortKeyFor(field: Field): (value: unknown) => SortKey | null {
   if (DataType.isInt(type) || DataType.isFloat(type) || DataType.isDate(type) || DataType.isBool(type)) {
     return (value) => (value === null || value === undefined ? null : (value as number | bigint | boolean))
   }
+  if (isUnsigned128(type)) return (value) => (value === null || value === undefined ? null : unsigned128(value as Uint8Array))
   if (DataType.isTime(type)) return (value) => (value === null || value === undefined ? null : BigInt(value as number))
   return (value) => format(value)
 }

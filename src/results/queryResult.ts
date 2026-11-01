@@ -1,5 +1,5 @@
 import type { Table, Vector } from 'apache-arrow'
-import { formatterFor, sortKeyFor, type CellFormatter, type SortKey } from './cellFormat'
+import { formatterFor, isUnsigned128, sortKeyFor, type CellFormatter, type SortKey } from './cellFormat'
 import { isMonthDayNano, monthDayNanoReader } from './intervalValues'
 import { isTimestampVector, timestampReader } from './timestampValues'
 
@@ -29,7 +29,7 @@ export function describeResult(sql: string, table: Table, elapsedMs: number): Qu
     type: String(field.type),
     format: formatterFor(field),
     sortKey: sortKeyFor(field),
-    numeric: numericTypeIds.has(field.typeId),
+    numeric: numericTypeIds.has(field.typeId) || isUnsigned128(field.type),
   }))
   const readers = table.schema.fields.map((_, index) => readerFor(table.getChildAt(index)!))
   return { id: crypto.randomUUID(), sql, table, readers, columns, rowCount: table.numRows, elapsedMs }
