@@ -26,9 +26,27 @@ describe('delimited file loader', () => {
     ])
   })
 
+  it('pads short rows instead of collapsing to one column', async () => {
+    await loadDelimitedFile(engine(), 'ragged', 'ragged.csv', encode('a,b,c\n1,2,3\n4,5\n7,8,9\n'), {})
+    expect(await selectRows(engine(), 'SELECT * FROM ragged ORDER BY a')).toEqual([
+      { a: 1, b: 2, c: 3 },
+      { a: 4, b: 5, c: null },
+      { a: 7, b: 8, c: 9 },
+    ])
+  })
+
+  it('infers types from every row when a late value changes the type', async () => {
+    const lines = Array.from({ length: 25000 }, (_, index) => `${index},${index}`)
+    const text = `id,v\n${lines.join('\n')}\n25000,abc\n`
+    const result = await loadDelimitedFile(engine(), 'late', 'late.csv', encode(text), {})
+    expect(result.tables).toEqual([{ name: 'late', rowCount: 25001 }])
+    const types = await selectRows(engine(), "SELECT data_type FROM information_schema.columns WHERE table_name = 'late' ORDER BY ordinal_position")
+    expect(types.map((row) => row.data_type)).toEqual(['BIGINT', 'VARCHAR'])
+  })
+
   it('quotes options safely', () => {
     expect(readCsvExpression("it's.csv", { delimiter: '|', header: true })).toBe(
-      "read_csv('it''s.csv', auto_detect = true, delim = '|', header = true)",
+      "read_csv('it''s.csv', auto_detect = true, null_padding = true, delim = '|', header = true)",
     )
   })
 })
