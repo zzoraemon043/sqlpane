@@ -29,6 +29,13 @@ describe('chart data', () => {
     expect(pointSeries(result, [0, 1, 2], 0, 1).map((point) => point.x)).toEqual([0, 1, 2])
   })
 
+  it('skips infinite dates and timestamps', async () => {
+    const sql = `SELECT * FROM (VALUES (DATE '2024-01-01', TIMESTAMP '2024-01-01', 1), (DATE 'infinity', TIMESTAMP 'infinity', 2), (DATE '-infinity', TIMESTAMP '-infinity', 3)) AS t(d, ts, v)`
+    const result = describeResult(sql, await engine().run(sql), 1)
+    expect(pointSeries(result, [0, 1, 2], 0, 2).map((point) => point.y)).toEqual([1])
+    expect(pointSeries(result, [0, 1, 2], 1, 2).map((point) => point.y)).toEqual([1])
+  })
+
   it('groups small pie slices into one', () => {
     const points = [5, 4, 3, 2, 1, 0].map((value, index) => ({ label: `p${index}`, value }))
     expect(pieSlices(points, 'Other', 3)).toEqual([

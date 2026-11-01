@@ -1,5 +1,7 @@
 import { DataType } from 'apache-arrow'
+import { isInfiniteEpoch } from '../results/calendar'
 import { cellText, cellValue, type QueryResult } from '../results/queryResult'
+import { TimestampValue } from '../results/timestampValues'
 
 export type ChartKind = 'bar' | 'line' | 'scatter' | 'pie'
 
@@ -31,7 +33,11 @@ export function isTemporalColumn(result: QueryResult, columnIndex: number): bool
 export function numericValue(result: QueryResult, rowIndex: number, columnIndex: number): number | null {
   if (isTemporalColumn(result, columnIndex)) {
     const raw = cellValue(result, rowIndex, columnIndex)
-    return raw === null || raw === undefined ? null : Number(raw)
+    if (raw === null || raw === undefined) return null
+    if (raw instanceof TimestampValue && isInfiniteEpoch(raw.epoch)) return null
+    const number = Number(raw)
+    // DATE infinity is the largest int32 day count
+    return Number.isFinite(number) && Math.abs(number) < 2147483647 * 86_400_000 ? number : null
   }
   const text = cellText(result, rowIndex, columnIndex)
   if (text === null) return null
