@@ -19,7 +19,7 @@ export async function loadExcelWorkbook(
       continue
     }
     const [header, ...body] = nonEmptyRows
-    const width = Math.max(...nonEmptyRows.map((row) => row.length))
+    const width = maxRowWidth(nonEmptyRows)
     const columnNames = uniqueColumnNames(Array.from({ length: width }, (_, index) => headerText(header[index])))
     const tableName = uniqueTableName(`${baseName}_${sheet.name}`, taken)
     taken.push(tableName)
@@ -31,6 +31,12 @@ export async function loadExcelWorkbook(
     result.tables.push({ name: tableName, rowCount: body.length })
   }
   return result
+}
+
+export function maxRowWidth(rows: readonly (readonly unknown[])[]): number {
+  let width = 0
+  for (const row of rows) if (row.length > width) width = row.length
+  return width
 }
 
 function headerText(value: CellValue | undefined): string {

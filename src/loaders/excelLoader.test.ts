@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, it } from 'vitest'
 import { installDomParser } from '../test-support/domParser'
 import { selectRows, startSharedEngine } from '../test-support/sharedEngine'
 import { buildXlsx } from '../test-support/xlsxFixture'
-import { loadExcelWorkbook } from './excelLoader'
+import { loadExcelWorkbook, maxRowWidth } from './excelLoader'
 
 beforeAll(installDomParser)
 const engine = startSharedEngine()
@@ -34,5 +34,14 @@ describe('excel loader', () => {
       { id: 2, name: 'pear', added: null },
     ])
     expect(await selectRows(engine(), 'SELECT * FROM stock_Notes')).toEqual([{ text: 'hello' }])
+  })
+})
+
+describe('maxRowWidth', () => {
+  it('handles far more rows than the argument spread limit', () => {
+    const rows = Array.from({ length: 300_000 }, () => [1])
+    rows[250_000] = [1, 2, 3]
+    expect(maxRowWidth(rows)).toBe(3)
+    expect(maxRowWidth([])).toBe(0)
   })
 })
