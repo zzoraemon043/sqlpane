@@ -16,6 +16,16 @@ describe('statement ranges', () => {
     ])
   })
 
+  it('keeps semicolons inside backtick identifiers and tagged dollar quotes', () => {
+    const text = 'SELECT 1 AS `a;b`; SELECT $fn$ x; $$ y $fn$; SELECT $1; SELECT $$a$$'
+    expect(statementRanges(text).map((range) => text.slice(range.from, range.to).trim())).toEqual([
+      'SELECT 1 AS `a;b`;',
+      'SELECT $fn$ x; $$ y $fn$;',
+      'SELECT $1;',
+      'SELECT $$a$$',
+    ])
+  })
+
   it('finds the statement under the cursor', () => {
     const text = 'SELECT 1;\n\nSELECT 2;\nSELECT 3'
     expect(textAt(text, 0)).toBe('SELECT 1;')

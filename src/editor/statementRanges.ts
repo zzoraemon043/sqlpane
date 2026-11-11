@@ -10,10 +10,11 @@ export function statementRanges(text: string): TextRange[] {
   while (index < text.length) {
     const char = text[index]
     const next = text[index + 1]
-    if (char === "'" || char === '"') index = skipQuoted(text, index, char)
+    const dollarTag = char === '$' ? dollarQuoteTag(text, index) : undefined
+    if (char === "'" || char === '"' || char === '`') index = skipQuoted(text, index, char)
     else if (char === '-' && next === '-') index = skipUntil(text, index, '\n')
     else if (char === '/' && next === '*') index = skipUntil(text, index + 2, '*/')
-    else if (char === '$' && next === '$') index = skipUntil(text, index + 2, '$$')
+    else if (dollarTag) index = skipUntil(text, index + dollarTag.length, dollarTag)
     else if (char === ';') {
       ranges.push({ from: start, to: index + 1 })
       start = index + 1
@@ -22,6 +23,12 @@ export function statementRanges(text: string): TextRange[] {
   }
   if (start < text.length) ranges.push({ from: start, to: text.length })
   return ranges
+}
+
+const dollarQuoteOpening = /^\$(?:[A-Za-z_][A-Za-z0-9_]*)?\$/
+
+function dollarQuoteTag(text: string, from: number): string | undefined {
+  return dollarQuoteOpening.exec(text.slice(from, from + 64))?.[0]
 }
 
 function skipQuoted(text: string, from: number, quote: string): number {
