@@ -1,6 +1,7 @@
 import { uniqueTableName } from '../catalog/tableNames'
 import type { SqlEngine } from '../engine/sqlEngine'
 import { appendTextRows, createTable, type TargetTable } from '../loaders/textRowWriter'
+import { evaluateCast } from './castValue'
 import { previewOf, statementKind, unwrapConditionalComment } from './classifyStatement'
 import { detectDialect, type Dialect } from './dialect'
 import { ImportReportBuilder, type ImportProgress, type ImportReport } from './importReport'
@@ -139,7 +140,7 @@ class ScriptImporter {
 
   private async createTable(definition: TableDefinition, line: number) {
     const sourceName = definition.qualifiedName[definition.qualifiedName.length - 1]
-    const key = sourceName.toLowerCase()
+    const key = sourceTableKey(definition.qualifiedName)
     if (this.tables.has(key)) {
       this.builder.skip({ line, kind: 'CREATE TABLE', preview: `${sourceName} (already created)` })
       return
@@ -170,8 +171,15 @@ class ScriptImporter {
         this.builder.failRow({ line: rowLine, table: table.target.name, reason: { code: 'valueCountMismatch', expected: target.columns.length, found: row.values.length } })
         continue
       }
-      batch.rows.push(row.values.map((value, index) => this.columnText(value, target.columns[index].type)))
-      batch.lines.push(rowLine)
+      try {
+        const values = row.values.every((value) => value.kind !== 'cast') ? row.values : await Promise.all(
+          row.values.map((value) => value.kind === 'cast' ? evaluateCast(this.engine, value, this.dialect) : value),
+        )
+        batch.rows.push(values.map((value, index) => this.columnText(value, target.columns[index].type)))
+        batch.lines.push(rowLine)
+      } catch (error) {
+        this.builder.failRow({ line: rowLine, table: table.target.name, reason: detail(messageOf(error)) })
+      }
     }
     if (batch.rows.length >= this.batchRows) await this.flush(key)
   }
@@ -184,15 +192,17 @@ class ScriptImporter {
 
   private async tableForInsert(statement: InsertStatement, line: number): Promise<ImportedTableState> {
     const sourceName = statement.qualifiedName[statement.qualifiedName.length - 1]
-    const existing = this.tables.get(sourceName.toLowerCase())
+    const key = sourceTableKey(statement.qualifiedName)
+    const existing = this.tables.get(key)
     if (existing) return existing
     if (!statement.columns) throw new Error(`table ${sourceName} was not created in this script and the INSERT has no column list`)
     await this.createTable(
-      { qualifiedName: [sourceName], columns: statement.columns.map((name) => ({ name, sourceType: { name: 'TEXT', args: [], unsigned: false }, type: 'VARCHAR', notNull: false })), primaryKey: [], skippedComputedColumns: [] },
+      { qualifiedName: statement.qualifiedName, columns: statement.columns.map((name) => ({ name, sourceType: { name: 'TEXT', args: [], unsigned: false }, type: 'VARCHAR', notNull: false })), primaryKey: [], skippedComputedColumns: [] },
       line,
     )
-    this.builder.warn({ code: 'createdWithTextColumns', table: sourceName })
-    return this.tables.get(sourceName.toLowerCase())!
+    const table = this.tables.get(key)!
+    this.builder.warn({ code: 'createdWithTextColumns', table: table.target.name })
+    return table
   }
 
   private targetForColumns(table: ImportedTableState, columns: string[] | undefined): TargetTable {
@@ -220,6 +230,10 @@ class ScriptImporter {
   private async flushAll() {
     for (const key of [...this.pending.keys()]) await this.flush(key)
   }
+}
+
+function sourceTableKey(qualifiedName: string[]): string {
+  return JSON.stringify(qualifiedName.map((part) => part.toLowerCase()))
 }
 
 function combinedReason(failures: Notice[]): Notice {

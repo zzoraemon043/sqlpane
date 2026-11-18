@@ -8,7 +8,7 @@ import { writeValueTable } from './valueTableLoader'
 export async function loadParquetBuffer(engine: SqlEngine, tableName: string, buffer: ArrayBuffer): Promise<LoadResult> {
   const metadata = parquetMetadata(buffer)
   const fieldNames = parquetSchema(metadata).children.map((child) => child.element.name)
-  const records = await parquetReadObjects({ file: buffer, metadata, compressors, utf8: true })
+  const records = await parquetReadObjects({ file: buffer, metadata, compressors, utf8: false })
   const columnNames = uniqueColumnNames(fieldNames)
   const rows = records.map((record) => fieldNames.map((name) => record[name]))
   const { failedLines } = await writeValueTable(engine, { name: tableName, columnNames, rows })

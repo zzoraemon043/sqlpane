@@ -124,6 +124,65 @@ describe('script importer', () => {
     expect(await selectRows(engine(), 'SELECT name FROM people ORDER BY id')).toEqual([{ name: 'Ada' }, { name: 'Linus' }, { name: 'Grace' }])
   })
 
+  it('keeps identically named tables in different source schemas separate', async () => {
+    const script = [
+      'CREATE TABLE [sales].[schema_orders] ([id] int);',
+      'CREATE TABLE [archive].[schema_orders] ([id] int);',
+      'INSERT [SALES].[schema_orders] VALUES (1);',
+      'INSERT [archive].[schema_orders] VALUES (2);',
+      'INSERT [returns].[schema_orders] ([id]) VALUES (3);',
+    ].join('\n')
+    const report = await importScript(engine(), chunked(script, 17), { dialect: 'sqlserver' })
+    expect(report.failedStatements).toEqual([])
+    expect(report.tables.map(({ name, rowCount }) => ({ name, rowCount }))).toEqual([
+      { name: 'schema_orders', rowCount: 1 },
+      { name: 'schema_orders_2', rowCount: 1 },
+      { name: 'schema_orders_3', rowCount: 1 },
+    ])
+    expect(await selectRows(engine(), 'SELECT id FROM schema_orders')).toEqual([{ id: 1 }])
+    expect(await selectRows(engine(), 'SELECT id FROM schema_orders_2')).toEqual([{ id: 2 }])
+    expect(await selectRows(engine(), 'SELECT id FROM schema_orders_3')).toEqual([{ id: '3' }])
+  })
+
+  it('imports inserts after SET IDENTITY_INSERT in the same batch', async () => {
+    const script = [
+      'CREATE TABLE [dbo].[identity_rows] ([id] int IDENTITY(1,1))',
+      'GO',
+      'SET IDENTITY_INSERT [dbo].[identity_rows] ON',
+      'INSERT [dbo].[identity_rows] ([id]) VALUES (7)',
+      'INSERT [dbo].[identity_rows] ([id]) VALUES (8)',
+      'SET IDENTITY_INSERT [dbo].[identity_rows] OFF',
+      'GO',
+    ].join('\r\n')
+    const report = await importScript(engine(), chunked(script, 7), { dialect: 'sqlserver' })
+    expect(await selectRows(engine(), 'SELECT id FROM identity_rows ORDER BY id')).toEqual([{ id: 7 }, { id: 8 }])
+    expect(report.failedStatements).toEqual([])
+    expect(report.failedRows).toEqual([])
+    expect(report.skipped.filter(({ kind }) => kind === 'SET IDENTITY_INSERT')).toEqual([
+      { line: 3, kind: 'SET IDENTITY_INSERT', preview: 'SET IDENTITY_INSERT [dbo].[identity_rows] ON' },
+      { line: 6, kind: 'SET IDENTITY_INSERT', preview: 'SET IDENTITY_INSERT [dbo].[identity_rows] OFF' },
+    ])
+  })
+
+  it('applies explicit casts before converting to the destination column type', async () => {
+    const script = [
+      'CREATE TABLE [dbo].[cast_rows] ([value] varchar(30));',
+      "INSERT [dbo].[cast_rows] VALUES (CAST(N'0012' AS int)), (CAST(N'not a number' AS int)),",
+      "(CAST(N'0012' AS unknown_type)), (CAST(CAST(N'0013' AS int) AS decimal(6,2))),",
+      "(CAST(-1.9 AS int)), (CAST(9007199254740993 AS bigint)), (CAST(NULL AS int)), (CAST(N'2147483648' AS int));",
+    ].join('\n')
+    const report = await importScript(engine(), chunked(script, 17), { dialect: 'sqlserver' })
+    expect(await selectRows(engine(), 'SELECT value FROM cast_rows ORDER BY value')).toEqual([
+      { value: '-1' }, { value: '12' }, { value: '13.00' }, { value: '9007199254740993' }, { value: null },
+    ])
+    expect(report.failedStatements).toEqual([])
+    expect(report.failedRows).toMatchObject([
+      { line: 2, table: 'cast_rows', reason: { code: 'detail', text: 'invalid value for CAST AS INT' } },
+      { line: 3, table: 'cast_rows', reason: { code: 'detail', text: 'unsupported CAST AS UNKNOWN_TYPE' } },
+      { line: 4, table: 'cast_rows', reason: { code: 'detail', text: expect.stringContaining('2147483648') } },
+    ])
+  })
+
   it('keeps the good rows of an extended INSERT when one row breaks a key', async () => {
     const script = 'CREATE TABLE `users` (`id` int NOT NULL, `name` varchar(10), PRIMARY KEY (`id`));\nINSERT INTO `users` VALUES (1,\'a\'),(2,\'b\'),(3,\'c\');\nINSERT INTO `users` VALUES (4,\'d\'),(4,\'dup\'),(5,\'e\');\n'
     const report = await importScript(engine(), chunked(script, 1000))

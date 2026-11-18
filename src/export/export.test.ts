@@ -1,4 +1,4 @@
-import { parquetReadObjects } from 'hyparquet'
+import { parquetMetadata, parquetReadObjects } from 'hyparquet'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { readWorkbook } from '../loaders/xlsx/readWorkbook'
 import { describeResult } from '../results/queryResult'
@@ -77,6 +77,42 @@ describe('export', () => {
     expect(rows[0]).toMatchObject({ id: 1, label: 'plain', price: 1.25, flag: true, big: 9007199254740993n, ratio: 2.5 })
     expect((rows[0].seen as Date).toISOString()).toBe('2024-01-02T03:04:05.000Z')
     expect(rows[1]).toMatchObject({ id: 2, price: null, flag: false, seen: null, big: 5n })
+  })
+
+  it('writes unsigned 64-bit integers with the unsigned Parquet annotation', async () => {
+    const sql = 'SELECT id, -1::BIGINT AS signed FROM (VALUES (0::UBIGINT), (18446744073709551615::UBIGINT), (NULL)) t(id)'
+    const result = describeResult(sql, await engine().run(sql), 1)
+    const buffer = exportParquet(result, [0, 1, 2]).buffer as ArrayBuffer
+    const metadata = parquetMetadata(buffer)
+    expect(metadata.schema[1]).toMatchObject({ type: 'INT64', logical_type: { type: 'INTEGER', bitWidth: 64, isSigned: false } })
+    expect(await parquetReadObjects({ file: buffer, metadata })).toEqual([
+      { id: 0n, signed: -1n }, { id: 18446744073709551615n, signed: -1n }, { id: null, signed: -1n },
+    ])
+  })
+
+  it('writes exact Parquet decimals with their precision and scale', async () => {
+    const sql = "SELECT 9007199254740993::DECIMAL(18,0) AS whole, '-12345678901234567890.1234'::DECIMAL(24,4) AS wide, NULL::DECIMAL(6,2) AS missing"
+    const result = describeResult(sql, await engine().run(sql), 1)
+    const buffer = exportParquet(result, [0]).buffer as ArrayBuffer
+    const metadata = parquetMetadata(buffer)
+    expect(metadata.schema.slice(1)).toMatchObject([
+      { converted_type: 'DECIMAL', precision: 18, scale: 0 },
+      { converted_type: 'DECIMAL', precision: 24, scale: 4 },
+      { converted_type: 'DECIMAL', precision: 6, scale: 2 },
+    ])
+    const physicalSchema = metadata.schema.map((field) => ({ ...field, converted_type: undefined, logical_type: undefined }))
+    const [row] = await parquetReadObjects({ file: buffer, metadata: { ...metadata, schema: physicalSchema }, utf8: false })
+    expect(row.whole).toBe(9007199254740993n)
+    const wide = Array.from(row.wide as Uint8Array, (byte) => byte.toString(16).padStart(2, '0')).join('')
+    expect(BigInt.asIntN(wide.length * 4, BigInt(`0x${wide}`))).toBe(-123456789012345678901234n)
+    expect(row.missing).toBeNull()
+  })
+
+  it('writes Excel decimals as text when they exceed Excel numeric precision', async () => {
+    const sql = "SELECT 9007199254740993::DECIMAL(18,0) AS whole, '900719925474099.30'::DECIMAL(18,2) AS scaled, 1.25::DECIMAL(6,2) AS small, 999999999999999::DECIMAL(15,0) AS fifteen"
+    const result = describeResult(sql, await engine().run(sql), 1)
+    const { bytes } = exportExcel(result, [0])
+    expect(readWorkbook(bytes)[0].rows[1]).toEqual(['9007199254740993', '900719925474099.30', 1.25, 999999999999999])
   })
 
   it('writes an Excel workbook that reads back with typed cells', async () => {

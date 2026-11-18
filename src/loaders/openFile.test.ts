@@ -27,6 +27,22 @@ describe('open file', () => {
     expect(await selectRows(engine(), 'SELECT x FROM data_2')).toEqual([{ x: 2 }])
   })
 
+  it('does not replace an earlier CSV table with a reserved prefix', async () => {
+    const first = await openFile(dependencies(), new File(['x\n1\n'], '__sqlpane_archive.csv'))
+    const second = await openFile(dependencies(), new File(['x\n2\n'], '__sqlpane_archive.csv'))
+    expect(first.tables[0].name).toBe('__sqlpane_archive')
+    expect(await selectRows(engine(), 'SELECT x FROM __sqlpane_archive')).toEqual([{ x: 1 }])
+    expect(second.tables[0].name).toBe('__sqlpane_archive_2')
+    expect(await selectRows(engine(), 'SELECT x FROM __sqlpane_archive_2')).toEqual([{ x: 2 }])
+  })
+
+  it('preserves a user table named like a staging table during JSON import', async () => {
+    await engine().run('CREATE TABLE __sqlpane_staging AS SELECT 42 AS id')
+    const result = await openFile(dependencies(), new File(['[{"x":1}]'], 'staged.json'))
+    expect(result.tables).toEqual([{ name: 'staged', rowCount: 1 }])
+    expect(await selectRows(engine(), 'SELECT id FROM __sqlpane_staging')).toEqual([{ id: 42 }])
+  })
+
   it('opens tab separated and newline delimited files', async () => {
     await openFile(dependencies(), new File(['a\tb\n1\t2\n'], 'pairs.tsv'))
     await openFile(dependencies(), new File(['{"k":1}\n{"k":2}\n'], 'lines.ndjson'))

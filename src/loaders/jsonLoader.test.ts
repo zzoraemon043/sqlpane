@@ -52,6 +52,26 @@ describe('json loader', () => {
     expect(await selectRows(engine(), 'SELECT typeof(id) AS kind FROM wide_lines LIMIT 1')).toEqual([{ kind: 'DOUBLE' }])
   })
 
+  it('keeps unsigned 64-bit IDs distinct as HUGEINT', async () => {
+    const text = '[{"id":18446744073709551614},{"id":18446744073709551615},{"id":170141183460469231731687303715884105727},{"id":-170141183460469231731687303715884105728}]'
+    await loadJsonText(engine(), 'unsigned_ids', text, 'document')
+    expect(await selectRows(engine(), 'SELECT typeof(id) AS kind, CAST(id AS VARCHAR) AS id FROM unsigned_ids ORDER BY unsigned_ids.id')).toEqual([
+      { kind: 'HUGEINT', id: '-170141183460469231731687303715884105728' },
+      { kind: 'HUGEINT', id: '18446744073709551614' },
+      { kind: 'HUGEINT', id: '18446744073709551615' },
+      { kind: 'HUGEINT', id: '170141183460469231731687303715884105727' },
+    ])
+  })
+
+  it('preserves integer literals outside the HUGEINT range as text', async () => {
+    const text = '{"id":170141183460469231731687303715884105728}\n{"id":-170141183460469231731687303715884105729}'
+    await loadJsonText(engine(), 'overflow_ids', text, 'lines')
+    expect(await selectRows(engine(), 'SELECT typeof(id) AS kind, id FROM overflow_ids ORDER BY id')).toEqual([
+      { kind: 'VARCHAR', id: '-170141183460469231731687303715884105729' },
+      { kind: 'VARCHAR', id: '170141183460469231731687303715884105728' },
+    ])
+  })
+
   it('loads newline delimited JSON', async () => {
     await loadJsonText(engine(), 'events', '{"kind":"open"}\n{"kind":"close","extra":1}\n', 'lines')
     expect(await selectRows(engine(), 'SELECT * FROM events')).toEqual([

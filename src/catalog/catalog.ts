@@ -12,9 +12,10 @@ export interface TableSummary {
   columns: ColumnSummary[]
 }
 
-export async function listTableNames(engine: SqlEngine): Promise<string[]> {
+export async function listTableNames(engine: SqlEngine, includeInternal = false): Promise<string[]> {
+  const visibleOnly = includeInternal ? '' : " AND table_name NOT LIKE '\\_\\_sqlpane%' ESCAPE '\\'"
   const table = await engine.run(
-    "SELECT table_name FROM information_schema.tables WHERE table_schema = 'main' AND table_name NOT LIKE '\\_\\_sqlpane%' ESCAPE '\\' ORDER BY table_name",
+    `SELECT table_name FROM information_schema.tables WHERE table_schema = 'main'${visibleOnly} ORDER BY table_name`,
   )
   return table.toArray().map((row) => String(row.table_name))
 }

@@ -34,7 +34,6 @@ export async function loadDelimitedFile(
     try {
       await create([])
     } catch {
-      await engine.run(`DROP TABLE IF EXISTS ${quoteIdentifier(tableName)}`)
       await create([fullScan])
     }
   } finally {

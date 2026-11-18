@@ -1,5 +1,5 @@
-import type { ColumnSource } from 'hyparquet-writer'
-import { parquetWriteBuffer } from 'hyparquet-writer'
+import { DataType } from 'apache-arrow'
+import { parquetWriteBuffer, schemaFromColumnData, type ColumnSource, type SchemaElement } from 'hyparquet-writer'
 import type { QueryResult } from '../results/queryResult'
 import { exportKindOf, plainValue, type ExportKind } from './exportValues'
 
@@ -10,26 +10,41 @@ const parquetTypes: Record<ExportKind, ColumnSource['type']> = {
   boolean: 'BOOLEAN',
   timestamp: 'TIMESTAMP',
   date: 'TIMESTAMP',
-  decimal: 'DOUBLE',
+  decimal: 'INT64',
   text: 'STRING',
 }
 
 export function exportParquet(result: QueryResult, rows: ArrayLike<number>): Uint8Array {
   const columnData: ColumnSource[] = result.columns.map((column, columnIndex) => {
-    const kind = integerKind(result, columnIndex)
-    const exportKind = exportKindOf(result, columnIndex)
+    const kind = exportKindOf(result, columnIndex)
+    const arrowType = result.table.schema.fields[columnIndex].type
     const data = Array.from({ length: rows.length }, (_, position) => {
-      const value = plainValue(result, rows[position], columnIndex, exportKind)
-      return typeof value === 'string' && (exportKind === 'date' || exportKind === 'timestamp') ? null : value
+      const value = plainValue(result, rows[position], columnIndex, kind)
+      if (typeof value !== 'string') return value
+      if (kind === 'decimal') return BigInt(value.replace('.', ''))
+      return kind === 'date' || kind === 'timestamp' ? null : value
     })
-    return { name: column.name, data, type: kind === 'int32' ? 'INT32' : parquetTypes[exportKindOf(result, columnIndex)], nullable: true }
+    const type = DataType.isInt(arrowType) && (arrowType.bitWidth < 32 || arrowType.bitWidth === 32 && arrowType.isSigned)
+      ? 'INT32'
+      : parquetTypes[kind]
+    return { name: column.name, data, type, nullable: true }
   })
-  return new Uint8Array(parquetWriteBuffer({ columnData }))
+  const schema = schemaFromColumnData({ columnData }).map((field, index) =>
+    index === 0 ? field : annotateField(field, result.table.schema.fields[index - 1].type),
+  )
+  return new Uint8Array(parquetWriteBuffer({ schema, columnData: columnData.map(({ name, data }) => ({ name, data })) }))
 }
 
-function integerKind(result: QueryResult, columnIndex: number): 'int32' | 'other' {
-  const type = result.table.schema.fields[columnIndex].type as { bitWidth?: number; isSigned?: boolean }
-  return exportKindOf(result, columnIndex) === 'integer' && (type.bitWidth ?? 64) <= 32 && !(type.bitWidth === 32 && type.isSigned === false)
-    ? 'int32'
-    : 'other'
+function annotateField(field: SchemaElement, arrowType: DataType): SchemaElement {
+  if (DataType.isInt(arrowType) && arrowType.bitWidth === 64 && !arrowType.isSigned) {
+    return { ...field, converted_type: 'UINT_64', logical_type: { type: 'INTEGER', bitWidth: 64, isSigned: false } }
+  }
+  if (DataType.isDecimal(arrowType)) {
+    const { precision, scale } = arrowType
+    const storage: Partial<SchemaElement> = precision <= 9 ? { type: 'INT32' }
+      : precision <= 18 ? { type: 'INT64' }
+      : { type: 'FIXED_LEN_BYTE_ARRAY', type_length: arrowType.bitWidth / 8 }
+    return { ...field, ...storage, converted_type: 'DECIMAL', logical_type: { type: 'DECIMAL', precision, scale }, precision, scale }
+  }
+  return field
 }

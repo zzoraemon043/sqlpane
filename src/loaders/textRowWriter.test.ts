@@ -69,4 +69,18 @@ describe('text row writer', () => {
     const outcome = await appendTextRows(engine(), { name: 'unused', columns: [] }, { rows: [] })
     expect(outcome).toEqual({ inserted: 0, failedLines: [], failures: [] })
   })
+
+  it('keeps concurrent staging batches independent and cleans them up', async () => {
+    const first = { name: 'parallel_a', columns: [{ name: 'id', type: 'INTEGER' }] }
+    const second = { ...first, name: 'parallel_b' }
+    await createTable(engine(), first)
+    await createTable(engine(), second)
+    await Promise.all([
+      appendTextRows(engine(), first, { rows: [['1']] }),
+      appendTextRows(engine(), second, { rows: [['2']] }),
+    ])
+    expect(await selectRows(engine(), 'SELECT id FROM parallel_a')).toEqual([{ id: 1 }])
+    expect(await selectRows(engine(), 'SELECT id FROM parallel_b')).toEqual([{ id: 2 }])
+    expect(await selectRows(engine(), "SELECT table_name FROM information_schema.tables WHERE starts_with(table_name, '__sqlpane_staging')")).toEqual([])
+  })
 })

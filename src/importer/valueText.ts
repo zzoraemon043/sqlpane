@@ -1,6 +1,6 @@
 import { bytesToHex } from '../loaders/columnTypes'
 import { isSqlServerTemporal, sqlServerTemporalText } from './sqlServerTemporal'
-import type { SqlValue } from './sqlValue'
+import type { CastValue, SqlValue } from './sqlValue'
 
 export interface ValueTextResult {
   text: string | null
@@ -11,7 +11,7 @@ const zeroDate = /^0000-00-00/
 
 const temporalColumns = new Set(['TIMESTAMP', 'DATE', 'TIME'])
 
-export function valueToColumnText(value: SqlValue, columnType: string): ValueTextResult {
+export function valueToColumnText(value: Exclude<SqlValue, CastValue>, columnType: string): ValueTextResult {
   const type = columnType.toUpperCase()
   switch (value.kind) {
     case 'null':

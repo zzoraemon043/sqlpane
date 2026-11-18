@@ -38,7 +38,7 @@ export async function openFile(
   options: OpenFileOptions = {},
 ): Promise<LoadResult> {
   const { engine } = dependencies
-  const existing = await listTableNames(engine)
+  const existing = await listTableNames(engine, true)
   const baseName = tableNameFromFileName(file.name)
   const tableName = uniqueTableName(baseName, existing)
   const kind = detectFileKind(file.name)

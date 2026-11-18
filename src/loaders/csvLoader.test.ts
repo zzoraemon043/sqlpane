@@ -44,6 +44,13 @@ describe('delimited file loader', () => {
     expect(types.map((row) => row.data_type)).toEqual(['BIGINT', 'VARCHAR'])
   })
 
+  it('preserves an existing table when both create attempts use its name', async () => {
+    await engine().run('CREATE TABLE occupied AS SELECT 42 AS id')
+    const load = loadDelimitedFile(engine(), 'occupied', 'other.csv', encode('id\n7\n'), {})
+    await expect(load).rejects.toThrow(/already exists/i)
+    expect(await selectRows(engine(), 'SELECT id FROM occupied')).toEqual([{ id: 42 }])
+  })
+
   it('quotes options safely', () => {
     expect(readCsvExpression("it's.csv", { delimiter: '|', header: true })).toBe(
       "read_csv('it''s.csv', auto_detect = true, null_padding = true, delim = '|', header = true)",

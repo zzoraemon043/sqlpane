@@ -1,3 +1,4 @@
+import { isSqlServerTemporal } from './sqlServerTemporal'
 import { describe, TokenCursor } from './tokenCursor'
 
 export type SqlValue =
@@ -7,6 +8,14 @@ export type SqlValue =
   | { kind: 'hex'; hex: string; castType?: string }
   | { kind: 'bits'; bits: string }
   | { kind: 'boolean'; value: boolean }
+  | CastValue
+
+export interface CastValue {
+  kind: 'cast'
+  operand: SqlValue
+  type: string
+  args: number[]
+}
 
 export class UnsupportedValueError extends Error {}
 
@@ -74,10 +83,25 @@ function parseCast(cursor: TokenCursor): SqlValue {
   cursor.expectSymbol('(')
   const inner = parseOperand(cursor)
   if (!cursor.acceptWord('AS')) throw new UnsupportedValueError('unsupported CAST expression')
-  const target = cursor.peek()
+  const target = cursor.next()
   const castType = target?.kind === 'word' ? target.upper : target?.kind === 'name' ? target.text.toUpperCase() : undefined
-  skipUntilClosingParenthesis(cursor)
-  return inner.kind === 'hex' && castType !== undefined ? { ...inner, castType } : inner
+  if (!castType) throw new UnsupportedValueError('unsupported CAST type')
+  if (castType === 'SIGNED' || castType === 'UNSIGNED') cursor.acceptWord('INTEGER')
+  const args = cursor.acceptSymbol('(') ? readCastArguments(cursor) : []
+  cursor.expectSymbol(')')
+  if (inner.kind === 'hex' && args.length === 0 && isSqlServerTemporal(castType)) return { ...inner, castType }
+  return { kind: 'cast', operand: inner, type: castType, args }
+}
+
+function readCastArguments(cursor: TokenCursor): number[] {
+  const args: number[] = []
+  do {
+    const token = cursor.next()
+    if (token?.kind !== 'number' || !/^\d+$/.test(token.text)) throw new UnsupportedValueError('unsupported CAST type arguments')
+    args.push(Number(token.text))
+  } while (cursor.acceptSymbol(','))
+  cursor.expectSymbol(')')
+  return args
 }
 
 function parseConvert(cursor: TokenCursor): SqlValue {

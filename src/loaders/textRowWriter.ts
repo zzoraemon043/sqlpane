@@ -27,8 +27,6 @@ export interface AppendOutcome {
   failures: Notice[]
 }
 
-const stagingTableName = '__sqlpane_staging'
-
 export function createTableStatement(target: TargetTable): string {
   const columnDefinitions = target.columns.map(
     (column) => `${quoteIdentifier(column.name)} ${column.type}${column.notNull ? ' NOT NULL' : ''}`,
@@ -62,15 +60,17 @@ export async function appendTextRows(
 ): Promise<AppendOutcome> {
   if (batch.rows.length === 0) return { inserted: 0, failedLines: [], failures: [] }
   const lineNumbers = batch.lineNumbers ?? batch.rows.map((_, index) => index + 1)
-  await stageRows(engine, target.columns.length, batch.rows, lineNumbers)
+  const stagingName = `__sqlpane_staging_${crypto.randomUUID()}`
+  const stagingSql = quoteIdentifier(stagingName)
+  await stageRows(engine, stagingName, target.columns.length, batch.rows, lineNumbers)
   try {
-    return await insertStagedRows(engine, target)
+    return await insertStagedRows(engine, target, stagingSql)
   } finally {
-    await engine.run(`DROP TABLE IF EXISTS ${stagingTableName}`)
+    await engine.run(`DROP TABLE IF EXISTS ${stagingSql}`)
   }
 }
 
-async function stageRows(engine: SqlEngine, columnCount: number, rows: (string | null)[][], lineNumbers: number[]) {
+async function stageRows(engine: SqlEngine, name: string, columnCount: number, rows: (string | null)[][], lineNumbers: number[]) {
   const vectors: Record<string, Vector> = {
     line: int32Vector(lineNumbers),
     row_index: int32Vector(rows.map((_, index) => index)),
@@ -78,36 +78,36 @@ async function stageRows(engine: SqlEngine, columnCount: number, rows: (string |
   for (let columnIndex = 0; columnIndex < columnCount; columnIndex++) {
     vectors[`c${columnIndex}`] = utf8Vector(rows.map((row) => row[columnIndex] ?? null))
   }
-  await engine.run(`DROP TABLE IF EXISTS ${stagingTableName}`)
-  await engine.insertArrowIpc(stagingTableName, tableToIPC(new Table(vectors), 'stream'))
+  await engine.insertArrowIpc(name, tableToIPC(new Table(vectors), 'stream'))
 }
 
-async function insertStagedRows(engine: SqlEngine, target: TargetTable): Promise<AppendOutcome> {
+async function insertStagedRows(engine: SqlEngine, target: TargetTable, stagingSql: string): Promise<AppendOutcome> {
   const stagedColumns = target.columns.map((column, index) => ({ column, sql: `c${index}` }))
   const allConvertible = stagedColumns.map(({ column, sql }) => convertibleCheck(sql, column.type)).join(' AND ')
   const columnList = target.columns.map((column) => quoteIdentifier(column.name)).join(', ')
   const selectList = stagedColumns.map(({ column, sql }) => conversionExpression(sql, column.type)).join(', ')
-  const failedRows = await engine.run(`SELECT line FROM ${stagingTableName} WHERE NOT (${allConvertible}) ORDER BY line`)
+  const failedRows = await engine.run(`SELECT line FROM ${stagingSql} WHERE NOT (${allConvertible}) ORDER BY line`)
   const failedLines = failedRows.toArray().map((row) => Number(row.line))
   const failures: Notice[] = failedLines.length > 0 ? [{ code: 'valueTypeMismatch' }] : []
   const insertSql = (filter: string) =>
-    `INSERT INTO ${quoteIdentifier(target.name)} (${columnList}) SELECT ${selectList} FROM ${stagingTableName} WHERE ${filter}`
+    `INSERT INTO ${quoteIdentifier(target.name)} (${columnList}) SELECT ${selectList} FROM ${stagingSql} WHERE ${filter}`
   try {
     const result = await engine.run(insertSql(`(${allConvertible})`))
     return { inserted: Number(result.getChildAt(0)?.get(0) ?? 0), failedLines, failures }
   } catch {
-    return insertRowByRow(engine, insertSql, allConvertible, failedLines, failures)
+    return insertRowByRow(engine, stagingSql, insertSql, allConvertible, failedLines, failures)
   }
 }
 
 async function insertRowByRow(
   engine: SqlEngine,
+  stagingSql: string,
   insertSql: (filter: string) => string,
   allConvertible: string,
   failedLines: number[],
   failures: Notice[],
 ): Promise<AppendOutcome> {
-  const candidates = await engine.run(`SELECT row_index, line FROM ${stagingTableName} WHERE ${allConvertible} ORDER BY row_index`)
+  const candidates = await engine.run(`SELECT row_index, line FROM ${stagingSql} WHERE ${allConvertible} ORDER BY row_index`)
   let inserted = 0
   const lines = [...failedLines]
   const messages = [...failures]

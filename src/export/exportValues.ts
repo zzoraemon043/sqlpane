@@ -33,7 +33,6 @@ export function plainValue(result: QueryResult, rowIndex: number, columnIndex: n
       return Number.isNaN(date.getTime()) ? cellText(result, rowIndex, columnIndex) : date
     }
     case 'decimal':
-      return Number(cellText(result, rowIndex, columnIndex))
     case 'text':
       return cellText(result, rowIndex, columnIndex)
   }

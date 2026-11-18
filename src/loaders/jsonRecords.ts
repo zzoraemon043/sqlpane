@@ -5,13 +5,13 @@ export interface RecordRows {
   rows: unknown[][]
 }
 
-const int64Min = -(2n ** 63n)
-const int64Max = 2n ** 63n - 1n
+const hugeIntMin = -(2n ** 127n)
+const hugeIntMax = 2n ** 127n - 1n
 
 function exactIntegers(_key: string, value: unknown, context?: { source?: string }): unknown {
   if (typeof value !== 'number' || Number.isSafeInteger(value) || !context?.source || !/^-?\d+$/.test(context.source)) return value
   const exact = BigInt(context.source)
-  return exact >= int64Min && exact <= int64Max ? exact : value
+  return exact >= hugeIntMin && exact <= hugeIntMax ? exact : context.source
 }
 
 function parseExact(text: string): unknown {

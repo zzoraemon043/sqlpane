@@ -40,4 +40,17 @@ describe('sqlite loader', () => {
   it('rejects bytes without the SQLite header', () => {
     expect(hasSqliteHeader(new TextEncoder().encode('not a database'))).toBe(false)
   })
+
+  it('keeps consecutive 64-bit integer IDs distinct', async () => {
+    const sqlJs = await loadSqlJsForNode()
+    const database = new sqlJs.Database()
+    database.run('CREATE TABLE exact_ids (id INTEGER); INSERT INTO exact_ids VALUES (9007199254740992), (9007199254740993)')
+    const bytes = database.export()
+    database.close()
+
+    await loadSqliteDatabase(engine(), sqlJs, bytes, [])
+    expect(await selectRows(engine(), 'SELECT CAST(id AS VARCHAR) AS id FROM exact_ids ORDER BY exact_ids.id')).toEqual([
+      { id: '9007199254740992' }, { id: '9007199254740993' },
+    ])
+  })
 })

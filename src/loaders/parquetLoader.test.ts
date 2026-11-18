@@ -24,4 +24,18 @@ describe('parquet loader', () => {
       { id: 3, name: '中文', ratio: 2, flag: true, big: '9007199254740993' },
     ])
   })
+
+  it('keeps unannotated byte arrays as binary alongside annotated strings', async () => {
+    const buffer = parquetWriteBuffer({
+      columnData: [
+        { name: 'label', data: ['第一筆', '第二筆'], type: 'STRING' },
+        { name: 'payload', data: [Uint8Array.of(0xfe), Uint8Array.of(0xff)], type: 'BYTE_ARRAY' },
+      ],
+    })
+    await loadParquetBuffer(engine(), 'binary_records', buffer)
+    expect(await selectRows(engine(), 'SELECT label, typeof(payload) AS kind, hex(payload) AS bytes FROM binary_records ORDER BY bytes')).toEqual([
+      { label: '第一筆', kind: 'BLOB', bytes: 'FE' },
+      { label: '第二筆', kind: 'BLOB', bytes: 'FF' },
+    ])
+  })
 })

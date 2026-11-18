@@ -28,8 +28,8 @@ describe('INSERT parser', () => {
         values: [
           { kind: 'number', text: '1' },
           { kind: 'string', text: '林小姐', binary: false },
-          { kind: 'string', text: '2001-02-03T04:05:06.000', binary: false },
-          { kind: 'number', text: '12.50' },
+          { kind: 'cast', type: 'DATETIME', args: [], operand: { kind: 'string', text: '2001-02-03T04:05:06.000', binary: false } },
+          { kind: 'cast', type: 'DECIMAL', args: [18, 2], operand: { kind: 'number', text: '12.50' } },
         ],
       },
     ])

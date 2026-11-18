@@ -17,7 +17,8 @@ export async function loadSqliteDatabase(
     for (const sourceName of listSqliteTables(database)) {
       const statement = database.prepare(`SELECT * FROM "${sourceName.replaceAll('"', '""')}"`)
       const rows: unknown[][] = []
-      while (statement.step()) rows.push(statement.get())
+      const getRow = statement.get as (params: null, options: { useBigInt: true }) => unknown[]
+      while (statement.step()) rows.push(getRow.call(statement, null, { useBigInt: true }))
       const columnNames = uniqueColumnNames(statement.getColumnNames())
       statement.free()
       const tableName = uniqueTableName(sourceName, taken)

@@ -1,4 +1,6 @@
 import type { Dialect } from './dialect'
+import { readQualifiedName, TokenCursor } from './tokenCursor'
+import { tokenize } from './tokenizer'
 
 export type SplitEvent =
   | { type: 'statement'; text: string; line: number }
@@ -165,6 +167,17 @@ export class StatementSplitter {
       events.push({ type: 'separator', text: lineText.trim(), line: this.lineStartLine })
       return
     }
+    if (this.dialect === 'sqlserver' && isIdentityInsertSetting(this.current)) {
+      this.emitStatement(events)
+      return
+    }
+    if (this.dialect === 'sqlserver' && /^\s*(?:INSERT\b|CREATE\s+TABLE\b)/i.test(before) && isIdentityInsertSetting(lineText)) {
+      const line = this.lineStartLine
+      this.current = before
+      this.emitStatement(events)
+      events.push({ type: 'statement', text: lineText.trim(), line })
+      return
+    }
     const directive = this.dialect === 'mysql' ? delimiterDirective.exec(lineText) : null
     if (directive && before.trim() === '') {
       this.current = ''
@@ -191,6 +204,17 @@ export class StatementSplitter {
     this.statementLine = 0
     this.lineStartIndex = 0
     this.lineStartLine = this.line
+  }
+}
+
+function isIdentityInsertSetting(text: string): boolean {
+  if (!/^\s*SET\s+IDENTITY_INSERT\b/i.test(text)) return false
+  try {
+    const cursor = new TokenCursor(tokenize(text, 'sqlserver'), 2)
+    readQualifiedName(cursor)
+    return (cursor.acceptWord('ON') || cursor.acceptWord('OFF')) && cursor.atEnd()
+  } catch {
+    return false
   }
 }
 
